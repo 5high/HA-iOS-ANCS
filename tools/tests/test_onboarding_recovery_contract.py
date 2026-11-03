@@ -22,7 +22,7 @@ def test_portal_can_send_a_synthetic_notification_without_ble():
     assert "mqtt_relay_publish_test_notification" in relay
     assert "mqtt_relay_publish_test_notification" in relay_header
     assert "local.ios_ancs.test" in relay
-    assert "테스트 알림" in relay
+    assert "Test notification" in relay
 
 
 def test_discovery_is_not_delayed_by_legacy_cleanup():
@@ -76,7 +76,8 @@ def test_repeated_ble_auth_failure_stops_the_reconnect_loop():
     assert "stop_advertising();" in repair
     assert "schedule_advertising_retry" not in repair
     assert "ble_pairing_repair_required" in script
-    assert "등록 복구 필요" in script
+    assert ("需要恢复注册" in script or
+            "Enrollment repair required" in script)
 
 
 def test_portal_reclaims_stale_http_connections():
@@ -172,7 +173,8 @@ def test_existing_portal_contracts_match_new_verification_window():
     script = read("components/portal_http/portal.js")
     provisioning = read("components/provisioning/provisioning_runtime.c")
 
-    assert "설정 포털은 테스트를 위해 10분간 유지" in script
+    assert ("设置门户将保持开启 10 分钟以便测试" in script or
+            "The setup portal stays open for 10 minutes for testing" in script)
     assert "esp_wifi_disable_pmf_config(WIFI_IF_AP)" not in provisioning
 
 

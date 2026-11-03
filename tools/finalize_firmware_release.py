@@ -58,7 +58,7 @@ def main():
         if count != 1:
             raise ValueError(f"Installer target missing: {target}")
         for name, text in readmes.items():
-            state = "빌드 검증 · 이 버전 실기기 미검증" if name == "README.md" else "Build verified; this version not hardware validated"
+            state = "Build verified; this version not hardware validated"
             pattern = rf'^(\| `{target}` \| [^|]+ \| )[^|]+\|[^\n]+$'
             text, count = re.subn(pattern, lambda m:m[1]+f"{factory.stat().st_size:,} bytes | {state} |", text, count=1, flags=re.M)
             if count != 1:

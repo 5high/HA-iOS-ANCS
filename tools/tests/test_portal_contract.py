@@ -524,14 +524,14 @@ def test_portal_can_start_ordinary_enrollment_without_leaving_settings():
     assert "ble_enroll" in header
     assert 'id="replace-enrollment"' in html
     assert '"/api/ble/replace"' in source
-    assert "이 설정 페이지는 열린 상태로 유지" in html
+    assert "本设置页面会保持打开" in html
 
 
-def test_portal_exposes_a_compact_korean_guided_setup():
+def test_portal_exposes_a_compact_bilingual_guided_setup():
     html = read("components/portal_http/portal.html")
     css = read("components/portal_http/portal.css")
 
-    assert '<html lang="ko">' in html
+    assert '<html lang="zh-CN">' in html
     assert 'aria-live="polite"' in html
     assert 'id="device-name"' in html
     for status_id in [
@@ -545,7 +545,7 @@ def test_portal_exposes_a_compact_korean_guided_setup():
     assert 'id="mqtt-client-id-help"' in html
     assert 'id="mqtt-base-topic-help"' in html
     assert 'id="device-management"' in html
-    assert "권장값" in html
+    assert "推荐值" in html
     assert "--color-primary" in css
     assert ":focus-visible" in css
     assert "@media (prefers-reduced-motion: reduce)" in css
@@ -557,26 +557,30 @@ def test_portal_explains_ble_silence_and_network_handoff():
     js = read("components/portal_http/portal.js")
     html = read("components/portal_http/portal.html")
 
-    assert "미등록 · 광고 꺼짐" in js
-    assert "등록된 iPhone만 자동으로 다시 연결" in js
-    assert "설정 포털은 테스트를 위해 10분간 유지" in js
-    assert "연결에 실패하면 설정 AP가 자동으로 다시 나타납니다" in js
-    assert "등록 전에는 Bluetooth 등록 신호를 보내지 않습니다" in html
+    assert ("未注册 · 广播已关闭" in js or
+            "Not enrolled · Advertising off" in js)
+    assert ("只有已注册的 iPhone 会自动重新连接" in js or
+            "Only the enrolled iPhone reconnects automatically" in js)
+    assert ("设置门户将保持开启 10 分钟以便测试" in js or
+            "The setup portal stays open for 10 minutes for testing" in js)
+    assert ("连接失败时设置 AP 会自动重新出现" in js or
+            "If the connection fails, the setup AP reappears automatically" in js)
+    assert "注册前不会发送蓝牙配对信号" in html
 
 
 def test_portal_renders_ble_status_for_all_runtime_states():
-    assert render_portal_ble_status({})["value"] == "미등록 · 광고 꺼짐"
-    assert render_portal_ble_status({"enroll_window_open": True})["value"] == "등록 대기"
-    assert render_portal_ble_status({"ble_bonded": True})["value"] == "등록됨 · 연결 대기"
-    assert render_portal_ble_status({"ble_connected": True})["value"] == "연결됨 · 준비 중"
-    assert render_portal_ble_status({"ble_connected": True, "ancs_ready": True})["value"] == "알림 수신 준비 완료"
+    assert render_portal_ble_status({})["value"] == "未注册 · 广播已关闭"
+    assert render_portal_ble_status({"enroll_window_open": True})["value"] == "等待注册"
+    assert render_portal_ble_status({"ble_bonded": True})["value"] == "已注册 · 等待连接"
+    assert render_portal_ble_status({"ble_connected": True})["value"] == "已连接 · 准备中"
+    assert render_portal_ble_status({"ble_connected": True, "ancs_ready": True})["value"] == "已可接收通知"
 
 
 def test_portal_enrollment_guidance_names_the_exact_iphone_bluetooth_entry():
     rendered = render_portal_ble_status({"enroll_window_open": True})
 
     assert "IOS-ANCS-C6-B2C3" in rendered["guidance"]
-    assert "Bluetooth 설정" in rendered["guidance"]
+    assert "蓝牙设置" in rendered["guidance"]
 
 
 def test_portal_applies_recommended_identifiers_from_device_suffix():

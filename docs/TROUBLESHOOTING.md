@@ -54,7 +54,7 @@ Moving settings that connected before to a broker that takes a username without 
 
 ## iPhone Does Not Pair
 
-- Open the 120-second enrollment window with setup-portal **iPhone 기기 등록**, Home Assistant **iPhone 등록 시작**, or BOOT for 3 seconds.
+- Open the 120-second enrollment window with setup-portal **Enroll iPhone**, Home Assistant **Start iPhone enrollment**, or BOOT for 3 seconds.
 - Keep the setup portal open and pair from iOS **Settings > Bluetooth**.
 - Enter the fixed PIN `123456` displayed in the setup portal.
 - Allow notification sharing when prompted.
@@ -86,8 +86,8 @@ Use `--expect-offline-drop` only when the capture includes offline and reconnect
 - Do not use REST commands, webhooks, or HTTP actions for relay delivery.
 
 
-## MQTT 브로커 연결 대기에서 멈춤
+## Stuck waiting on the MQTT broker
 
-설정 포털은 2초마다 연결 상태를 갱신합니다. `연결 실패`가 표시되면 브로커 주소·포트·TLS 모드와 함께 TCP 시간 초과, 포트 거부, 인증 거부 또는 ESP32 네트워크 경로 오류가 표시됩니다. PC에서 포트가 열리더라도 ESP32가 연결된 서브넷의 NAT loopback·VLAN·게스트 네트워크 정책은 별도로 확인해야 합니다.
+The setup portal refreshes its connection status every 2 seconds. When it shows `Connection failed`, the broker address, port, and TLS mode are displayed together with the exact error: TCP timeout, port refused, authentication rejected, or no route from the ESP32 subnet. A port open on your PC does not prove reachability from the ESP32's subnet - check NAT loopback, VLAN, and guest-network policies separately.
 
-MQTT가 연결되면 Home Assistant Discovery가 실제 iPhone 알림보다 먼저 발행됩니다. **테스트 알림 보내기**로 BLE 연결 없이도 MQTT 센서 등록과 상태 갱신을 검증할 수 있습니다.
+Once MQTT connects, Home Assistant Discovery publishes before any real iPhone notification arrives. Use **Send test notification** to verify MQTT sensor registration and state updates without a BLE connection.

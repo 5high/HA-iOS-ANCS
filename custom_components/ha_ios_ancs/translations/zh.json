@@ -1,0 +1,190 @@
+{
+  "title": "iOS ANCS",
+  "config": {
+    "step": {
+      "user": {
+        "description": "选择已通过 MQTT 发现的现有 iOS ANCS 源设备。",
+        "data": {
+          "source_entity_unique_id": "MQTT 设备"
+        }
+      },
+      "reconfigure": {
+        "description": "为此 iOS ANCS 条目选择通过 MQTT 发现的源设备。",
+        "data": {
+          "source_entity_unique_id": "MQTT 设备"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "该 iOS ANCS MQTT 源设备已配置。",
+      "mqtt_unavailable": "添加 iOS ANCS 前请先设置 Home Assistant 的 MQTT 集成。",
+      "no_devices_found": "未找到兼容的、通过 MQTT 发现的 iOS ANCS 源设备。",
+      "reconfigure_successful": "iOS ANCS 设备已更新。"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "app_name": {
+        "name": "应用名称"
+      },
+      "app_id": {
+        "name": "应用 ID"
+      },
+      "title": {
+        "name": "通知标题"
+      },
+      "subtitle": {
+        "name": "通知副标题"
+      },
+      "message": {
+        "name": "通知内容"
+      },
+      "event": {
+        "name": "通知事件",
+        "state": {
+          "added": "新增",
+          "modified": "修改",
+          "removed": "移除"
+        }
+      },
+      "category": {
+        "name": "通知类别",
+        "state": {
+          "other": "其他",
+          "incoming_call": "来电",
+          "missed_call": "未接来电",
+          "voicemail": "语音信箱",
+          "social": "社交",
+          "schedule": "日程",
+          "email": "邮件",
+          "news": "新闻",
+          "health_and_fitness": "健康与健身",
+          "business_and_finance": "商务与金融",
+          "location": "位置",
+          "entertainment": "娱乐",
+          "reserved": "保留"
+        }
+      },
+      "date": {
+        "name": "通知日期"
+      },
+      "uid": {
+        "name": "通知 UID"
+      },
+      "session_id": {
+        "name": "会话 ID"
+      },
+      "event_id": {
+        "name": "事件 ID"
+      },
+      "event_flags": {
+        "name": "事件标志"
+      },
+      "category_id": {
+        "name": "类别 ID"
+      },
+      "category_count": {
+        "name": "类别数量"
+      },
+      "message_size": {
+        "name": "消息大小"
+      },
+      "schema_version": {
+        "name": "Schema 版本"
+      },
+      "relay_id": {
+        "name": "中继 ID"
+      },
+      "target": {
+        "name": "目标"
+      },
+      "source": {
+        "name": "来源"
+      },
+      "device_name": {
+        "name": "设备名称"
+      },
+      "error_code": {
+        "name": "错误代码"
+      },
+      "error_name": {
+        "name": "错误名称"
+      },
+      "raw_notification": {
+        "name": "原始通知"
+      },
+      "connection_state": {
+        "name": "连接恢复状态",
+        "state": {
+          "offline": "离线",
+          "stale": "等待实时状态",
+          "configuration": "配置中",
+          "wifi_retry": "Wi-Fi 重试中",
+          "mqtt_error": "MQTT 错误",
+          "bond_store_error": "配对存储读取错误",
+          "authentication_protection": "认证失败保护",
+          "enrollment_open": "注册窗口已打开",
+          "authentication_failed": "认证失败",
+          "pairing_check": "需检查配对状态",
+          "enrollment_required": "需要新注册",
+          "reconnecting": "等待已有配对设备",
+          "ready": "通知就绪",
+          "authentication_timeout": "认证超时",
+          "ancs_retry": "ANCS 恢复中",
+          "authenticating": "认证中",
+          "discovering": "发现 ANCS 服务中",
+          "subscribing": "订阅中"
+        }
+      }
+    },
+    "binary_sensor": {
+      "complete": {
+        "name": "收集完成"
+      },
+      "silent": {
+        "name": "静默"
+      },
+      "important": {
+        "name": "重要"
+      },
+      "pre_existing": {
+        "name": "既有通知"
+      },
+      "positive_action_available": {
+        "name": "可执行肯定操作"
+      },
+      "negative_action_available": {
+        "name": "可执行否定操作"
+      },
+      "app_id_truncated": {
+        "name": "应用 ID 被截断"
+      },
+      "app_name_truncated": {
+        "name": "应用名称被截断"
+      },
+      "title_truncated": {
+        "name": "标题被截断"
+      },
+      "subtitle_truncated": {
+        "name": "副标题被截断"
+      },
+      "message_truncated": {
+        "name": "内容被截断"
+      },
+      "has_error": {
+        "name": "存在错误"
+      },
+      "ble_connected": {
+        "name": "BLE 连接"
+      },
+      "notification_ready": {
+        "name": "通知就绪"
+      }
+    },
+    "event": {
+      "notification": {
+        "name": "通知"
+      }
+    }
+  }
+}

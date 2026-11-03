@@ -107,20 +107,20 @@ def connection_state(data: dict[str, Any], fresh: bool, available: bool | None) 
 
 
 USER_ACTIONS = {
-    "offline": "장치 전원과 Wi-Fi·MQTT 연결을 확인하세요. 마지막 알림은 과거 기록입니다.",
-    "stale": "실시간 상태를 기다리세요. 마지막 연결값을 현재 상태로 판단하지 마세요.",
-    "configuration": "Wi-Fi 설정을 저장하거나 설정 모드를 종료하세요.",
-    "wifi_retry": "자동 재접속 중입니다. 반복 인증 실패라면 Wi-Fi 비밀번호를 확인하세요.",
-    "mqtt_error": "MQTT 서버·DNS·인증 설정과 오류 코드를 확인하세요.",
-    "bond_store_error": "저장소 조회 오류입니다. 초기화하거나 페어링을 삭제하지 말고 오류 코드를 확인하세요.",
-    "authentication_protection": "신규 등록을 명시적으로 다시 요청한 뒤 기기의 PIN으로 인증하세요. 재시작이나 Replace는 우선 필요하지 않습니다.",
-    "enrollment_open": "등록 창 안에 기기의 PIN으로 등록한 뒤 시스템 알림 공유를 확인하세요.",
-    "authentication_failed": "PIN과 인증 오류를 확인하고 등록을 다시 요청하세요. 남은 iPhone 등록이 새 등록을 막는 경우에만 이 기기 지우기를 사용하세요.",
-    "pairing_check": "양쪽 등록 상태와 인증 오류를 확인하세요. 저장 정보 불일치가 확인된 경우에만 명시적으로 재페어링하세요.",
-    "enrollment_required": "신규 등록을 요청하세요. iPhone에 기존 항목이 남아 등록을 막는 경우에만 이 기기 지우기를 사용하세요.",
-    "reconnecting": "기존 페어링은 유지됩니다. iPhone의 Bluetooth와 거리를 확인하세요.",
-    "authentication_timeout": "인증 시간이 초과되었습니다. iPhone 연결 상태와 PIN 입력을 확인하세요.",
-    "ancs_retry": "시스템 알림 공유가 켜져 있는지 확인하세요. 자동 복구는 기존 페어링을 삭제하지 않습니다.",
+    "offline": "Check device power and the Wi-Fi/MQTT connection. The last notification is a historical record.",
+    "stale": "Wait for a live status update. Do not treat the last reported value as the current state.",
+    "configuration": "Save the Wi-Fi settings or exit setup mode.",
+    "wifi_retry": "Automatic reconnection in progress. If authentication keeps failing, check the Wi-Fi password.",
+    "mqtt_error": "Check the MQTT server, DNS, and authentication settings along with the error code.",
+    "bond_store_error": "Storage lookup error. Do not erase or delete the pairing; check the error code first.",
+    "authentication_protection": "Explicitly request a new enrollment, then authenticate with the device PIN. A restart or Replace is not needed first.",
+    "enrollment_open": "Enroll with the device PIN while the enrollment window is open, then confirm notification sharing is enabled.",
+    "authentication_failed": "Check the PIN and authentication error, then request enrollment again. Use erase-device only if a leftover iPhone registration blocks the new enrollment.",
+    "pairing_check": "Check the enrollment state on both sides and any authentication error. Re-pair explicitly only when stored information mismatch is confirmed.",
+    "enrollment_required": "Request a new enrollment. Use erase-device only if an existing entry on the iPhone blocks enrollment.",
+    "reconnecting": "The existing pairing is preserved. Check Bluetooth and distance on the iPhone.",
+    "authentication_timeout": "Authentication timed out. Check the iPhone connection state and PIN entry.",
+    "ancs_retry": "Confirm that notification sharing is turned on. Automatic recovery does not delete the existing pairing.",
 }
 
 

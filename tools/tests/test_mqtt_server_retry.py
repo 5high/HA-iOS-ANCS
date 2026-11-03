@@ -540,7 +540,8 @@ def test_portal_requires_the_mqtt_password_for_a_new_server():
     assert "provision_config_mqtt_fingerprint(existing)" in verified
     assert "mqtt_password_required:" in script
     assert "API_ERROR_MESSAGES[body.error]" in script
-    assert "연결된 적이 있는 MQTT 서버의 주소나 포트를 바꿀 때는 MQTT 비밀번호를 다시 입력해야 합니다." in html
+    assert ("更改曾成功连接过的 MQTT 服务器地址或端口时，必须重新输入 MQTT 密码。" in html or
+            "When you change the address or port of an MQTT server that connected before, re-enter the MQTT password." in html)
 
     cmake = _read("components/provision_store/CMakeLists.txt")
     assert '"provision_policy.c"' in cmake

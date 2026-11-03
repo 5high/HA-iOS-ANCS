@@ -33,9 +33,9 @@ static ancs_notification_t sample_notification(void)
     notification.complete = true;
     notification.received_at_ms = 123456;
     strcpy(notification.app_id, "com.example.delivery");
-    strcpy(notification.title, "택배 \"도착\"");
+    strcpy(notification.title, "Package \"delivered\"");
     strcpy(notification.subtitle, "");
-    strcpy(notification.message, "현관\\앞\n보관");
+    strcpy(notification.message, "Porch\\front\nstored");
     strcpy(notification.message_size_raw, "20");
     strcpy(notification.date_raw, "20260728T164500");
     return notification;
@@ -56,9 +56,9 @@ TEST_CASE("notification JSON is valid escaped UTF-8", "[ancs][json]")
     TEST_ASSERT_NOT_NULL(
         strstr(s_json_output, "\"target\":\"" ANCS_TARGET_ID "\""));
     TEST_ASSERT_NOT_NULL(
-        strstr(s_json_output, "\"title\":\"택배 \\\"도착\\\"\""));
+        strstr(s_json_output, "\"title\":\"Package \\\"delivered\\\"\""));
     TEST_ASSERT_NOT_NULL(
-        strstr(s_json_output, "\"message\":\"현관\\\\앞\\n보관\""));
+        strstr(s_json_output, "\"message\":\"Porch\\\\front\\nstored\""));
     TEST_ASSERT_NOT_NULL(strstr(s_json_output, "\"error\":null"));
 }
 

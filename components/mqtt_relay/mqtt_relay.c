@@ -93,13 +93,13 @@ typedef struct {
 
 static const mqtt_relay_discovery_field_t s_focused_sensors[] = {
     {.key = "notification_title",
-     .name = "알림 제목",
+     .name = "Notification title",
      .value_template = "{{ (value_json.title | default('', true))[:255] }}"},
     {.key = "notification_message",
-     .name = "알림 내용",
+     .name = "Notification message",
      .value_template = "{{ (value_json.message | default('', true))[:255] }}"},
     {.key = "app_name",
-     .name = "앱 이름",
+     .name = "App name",
      .value_template =
          "{{ (value_json.app_name | default(value_json.app_id, true))[:255] }}"},
 };
@@ -501,7 +501,7 @@ esp_err_t mqtt_relay_build_enroll_discovery_payload(
     } while (0)
 
     APPEND_ENROLL_LITERAL("{\"name\":");
-    esp_err_t err = json_write_string(&cursor, &remaining, "iPhone 등록 시작");
+    esp_err_t err = json_write_string(&cursor, &remaining, "Start iPhone enrollment");
     if (err != ESP_OK) {
         return err;
     }
@@ -646,7 +646,7 @@ esp_err_t mqtt_relay_build_restart_discovery_payload(
     size_t remaining = out_size;
     esp_err_t err = json_write_literal(&cursor, &remaining, "{\"name\":");
     if (err == ESP_OK) {
-        err = json_write_string(&cursor, &remaining, "장치 재시작");
+        err = json_write_string(&cursor, &remaining, "Device restart");
     }
     if (err == ESP_OK) {
         err = json_write_literal(&cursor, &remaining, ",\"unique_id\":");
@@ -781,7 +781,7 @@ esp_err_t mqtt_relay_build_discovery_payload(const provision_config_t *config,
     }
     cursor += written;
     remaining -= (size_t)written;
-    esp_err_t err = json_write_string(&cursor, &remaining, "최근 알림");
+    esp_err_t err = json_write_string(&cursor, &remaining, "Recent notification");
     if (err != ESP_OK) {
         return err;
     }
@@ -1058,7 +1058,7 @@ esp_err_t mqtt_relay_build_status_discovery_payload(
     size_t remaining = out_size;
     esp_err_t err = json_write_literal(&cursor, &remaining, "{\"name\":");
     if (err == ESP_OK) {
-        err = json_write_string(&cursor, &remaining, "장치 상태");
+        err = json_write_string(&cursor, &remaining, "Device status");
     }
     if (err == ESP_OK) {
         err = json_write_literal(&cursor, &remaining, ",\"unique_id\":");
@@ -1127,8 +1127,8 @@ static esp_err_t mqtt_relay_format_uptime(uint64_t seconds,
     if (days > 0U) {
         written = snprintf(out,
                            out_size,
-                           "%" PRIu64 "일 %" PRIu64 "시간 %" PRIu64
-                           "분 %" PRIu64 "초",
+                           "%" PRIu64 "d %" PRIu64 "h %" PRIu64
+                           "m %" PRIu64 "s",
                            days,
                            hours,
                            minutes,
@@ -1136,18 +1136,18 @@ static esp_err_t mqtt_relay_format_uptime(uint64_t seconds,
     } else if (hours > 0U) {
         written = snprintf(out,
                            out_size,
-                           "%" PRIu64 "시간 %" PRIu64 "분 %" PRIu64 "초",
+                           "%" PRIu64 "h %" PRIu64 "m %" PRIu64 "s",
                            hours,
                            minutes,
                            remaining_seconds);
     } else if (minutes > 0U) {
         written = snprintf(out,
                            out_size,
-                           "%" PRIu64 "분 %" PRIu64 "초",
+                           "%" PRIu64 "m %" PRIu64 "s",
                            minutes,
                            remaining_seconds);
     } else {
-        written = snprintf(out, out_size, "%" PRIu64 "초", remaining_seconds);
+        written = snprintf(out, out_size, "%" PRIu64 "s", remaining_seconds);
     }
     return (written < 0 || (size_t)written >= out_size) ? ESP_ERR_INVALID_SIZE
                                                         : ESP_OK;
@@ -2786,14 +2786,14 @@ esp_err_t mqtt_relay_publish_test_notification(const char *device_name)
                   "local.ios_ancs.test",
                   sizeof(notification.app_id));
     (void)strlcpy(notification.app_name,
-                  "iOS ANCS 테스트",
+                  "iOS ANCS Test",
                   sizeof(notification.app_name));
     (void)strlcpy(notification.title,
-                  "테스트 알림",
+                  "Test notification",
                   sizeof(notification.title));
     (void)strlcpy(
         notification.message,
-        "ESP32 테스트 알림입니다. Home Assistant에서 수신 여부를 확인하세요.",
+        "This is an ESP32 test notification. Check whether Home Assistant received it.",
         sizeof(notification.message));
     (void)snprintf(notification.message_size_raw,
                    sizeof(notification.message_size_raw),

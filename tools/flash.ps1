@@ -31,12 +31,12 @@ if (-not $IdfPath) {
 }
 
 if (-not $IdfPath) {
-    throw 'ESP-IDF v6.0.2 경로를 IDF_PATH 또는 -IdfPath로 지정하십시오.'
+    throw 'Set the ESP-IDF v6.0.2 path via IDF_PATH or -IdfPath.'
 }
 
 $ExportBat = Join-Path $IdfPath 'export.bat'
 if (-not (Test-Path -LiteralPath $ExportBat)) {
-    throw "ESP-IDF export.bat를 찾을 수 없습니다: $ExportBat"
+    throw "ESP-IDF export.bat not found: $ExportBat"
 }
 
 if (-not $Port) {
@@ -65,5 +65,5 @@ finally {
 }
 
 Write-Host ''
-Write-Host '플래시 완료. iPhone 페어링 후 다음 명령으로 캡처를 검증하십시오:'
+Write-Host 'Flash complete. After pairing the iPhone, verify capture with this command:'
 Write-Host "python tools/verify_capture.py --target $Target --port $Port --baud 115200 --timeout 180 --output artifacts/ancs-capture.jsonl"

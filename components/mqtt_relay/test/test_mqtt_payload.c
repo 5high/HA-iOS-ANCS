@@ -227,7 +227,7 @@ TEST_CASE("notification payload preserves serial fields and adds relay fields",
     TEST_ASSERT_NOT_NULL(strstr(payload, "\"published_at_ms\":123456"));
     TEST_ASSERT_NOT_NULL(
         strstr(payload, "\"app_id\":\"com.iwilab.KakaoTalk\""));
-    TEST_ASSERT_NOT_NULL(strstr(payload, "\"app_name\":\"카카오톡\""));
+    TEST_ASSERT_NOT_NULL(strstr(payload, "\"app_name\":\"KakaoTalk\""));
     TEST_ASSERT_NOT_NULL(strstr(payload, "\"complete\":true"));
     free(payload);
 }
@@ -251,7 +251,7 @@ TEST_CASE("native ANCS app name wins before mapping and app id fallback",
     TEST_ASSERT_NOT_NULL(payload);
     TEST_ASSERT_NOT_NULL(
         strstr(payload, "\"app_name\":\"KakaoTalk from iPhone\""));
-    TEST_ASSERT_NULL(strstr(payload, "\"app_name\":\"카카오톡\""));
+    TEST_ASSERT_NULL(strstr(payload, "\"app_name\":\"KakaoTalk\""));
     free(payload);
 
     notification.app_name[0] = '\0';
@@ -273,9 +273,9 @@ TEST_CASE("native ANCS app name wins before mapping and app id fallback",
 
 TEST_CASE("app names use documented mapping and safe fallback", "[mqtt_relay]")
 {
-    TEST_ASSERT_EQUAL_STRING("메시지",
+    TEST_ASSERT_EQUAL_STRING("Messages",
                              mqtt_app_name_lookup("com.apple.MobileSMS"));
-    TEST_ASSERT_EQUAL_STRING("카카오톡",
+    TEST_ASSERT_EQUAL_STRING("KakaoTalk",
                              mqtt_app_name_lookup("COM.IWILAB.KAKAOTALK"));
     TEST_ASSERT_EQUAL_STRING("com.example.Unknown",
                              mqtt_app_name_lookup("com.example.Unknown"));
@@ -357,7 +357,7 @@ TEST_CASE("discovery uses relay id state and json attributes", "[mqtt_relay]")
                                                          payload,
                                                          sizeof(payload)));
     TEST_ASSERT_NOT_NULL(strstr(payload, "\"state_topic\":\"ios-ancs/2b20/notification\""));
-    TEST_ASSERT_NOT_NULL(strstr(payload, "\"name\":\"최근 알림\""));
+    TEST_ASSERT_NOT_NULL(strstr(payload, "\"name\":\"Recent notification\""));
     TEST_ASSERT_NOT_NULL(strstr(payload, "\"unique_id\":\"ios_ancs_c6_ab12_last_notification\""));
     TEST_ASSERT_NOT_NULL(strstr(payload, "\"object_id\":\"ios_ancs_c6_ab12_last_notification\""));
     TEST_ASSERT_NULL(strstr(payload, "\"name\":\"ios_ancs_c6_ab12\",\"unique_id\""));
@@ -396,7 +396,7 @@ TEST_CASE("discovery keeps one aggregate and three Korean notification sensors",
         "notification_message",
         "app_name",
     };
-    static const char *expected_names[] = {"알림 제목", "알림 내용", "앱 이름"};
+    static const char *expected_names[] = {"Notification title", "Notification message", "App name"};
     provision_config_t config = valid_config();
     mqtt_relay_device_info_t device_info = valid_device_info();
     char topic[MQTT_RELAY_DISCOVERY_TOPIC_MAX];
@@ -550,7 +550,7 @@ TEST_CASE("device status creates one retained Home Assistant binary sensor",
                                                   "ios-ancs/2b20/availability",
                                                   payload,
                                                   sizeof(payload)));
-    TEST_ASSERT_NOT_NULL(strstr(payload, "\"name\":\"장치 상태\""));
+    TEST_ASSERT_NOT_NULL(strstr(payload, "\"name\":\"Device status\""));
     TEST_ASSERT_NOT_NULL(strstr(payload, "value_json.ready"));
     TEST_ASSERT_NOT_NULL(strstr(payload, "\"json_attributes_topic\":\"ios-ancs/2b20/state\""));
     TEST_ASSERT_NOT_NULL(strstr(payload, "\"device_class\":\"connectivity\""));
@@ -636,7 +636,7 @@ TEST_CASE("state payload reports counters without secrets", "[mqtt_relay]")
     TEST_ASSERT_NOT_NULL(strstr(payload, "\"ble_connected\":true"));
     TEST_ASSERT_NOT_NULL(strstr(payload, "\"ble_bonded\":true"));
     TEST_ASSERT_NOT_NULL(strstr(payload, "\"uptime_seconds\":3723"));
-    TEST_ASSERT_NOT_NULL(strstr(payload, "\"uptime\":\"1시간 2분 3초\""));
+    TEST_ASSERT_NOT_NULL(strstr(payload, "\"uptime\":\"1h 2m 3s\""));
     TEST_ASSERT_NOT_NULL(strstr(payload, "\"accepted\":2"));
     TEST_ASSERT_NOT_NULL(strstr(payload, "\"published_ack\":1"));
     TEST_ASSERT_NOT_NULL(strstr(payload, "\"wifi_ssid\":\"ExampleWiFi\""));
@@ -948,7 +948,7 @@ TEST_CASE("restart button uses exact non-retained MQTT command", "[mqtt_relay]")
             "ios-ancs/2b20/availability",
             payload,
             sizeof(payload)));
-    TEST_ASSERT_NOT_NULL(strstr(payload, "\"name\":\"장치 재시작\""));
+    TEST_ASSERT_NOT_NULL(strstr(payload, "\"name\":\"Device restart\""));
     TEST_ASSERT_NOT_NULL(strstr(payload, "\"payload_press\":\"RESTART\""));
     TEST_ASSERT_NOT_NULL(strstr(payload, "\"retain\":false"));
     TEST_ASSERT_TRUE(mqtt_relay_is_restart_command(

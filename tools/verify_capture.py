@@ -207,7 +207,7 @@ def main(argv=None):
     args = parse_args(argv)
     capture_path = _default_capture_path(args.output)
     print(
-        "iPhone에서 미리보기가 보이는 테스트 앱 알림을 1건 발생시키십시오.",
+        "Trigger one test-app notification on the iPhone so a preview is visible.",
         flush=True,
     )
     try:

@@ -25,13 +25,13 @@ def main() -> int:
 
     if not candidates:
         print(
-            "ESP 계열 USB 시리얼 포트를 찾지 못했습니다. 포트를 명시하십시오.",
+            "No ESP-series USB serial port found. Specify the port explicitly.",
             file=sys.stderr,
         )
         return 3
 
     print(
-        "ESP 계열 USB 시리얼 후보가 여러 개입니다. 포트를 명시하십시오:",
+        "Multiple ESP-series USB serial candidates found. Specify the port explicitly:",
         file=sys.stderr,
     )
     for port in candidates:

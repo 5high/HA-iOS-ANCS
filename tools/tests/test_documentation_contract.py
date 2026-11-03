@@ -44,15 +44,15 @@ INSTALLER_FACTS = (
     "IOS-ANCS-SETUP-XXXXXX",
     "ancs-xxxxxx",
     "http://192.168.4.1",
-    "iPhone 등록 시작",
+    "iPhone 注册开始",
     "123456",
 )
 LEGACY_INSTALLER_COPY = (
     "ANCS Flash Station",
-    "모델을 고르고",
-    "현장에서 설치합니다",
+    "选择型号并",
+    "在现场完成安装",
     "FIELD PROCEDURE",
-    "현장 준비",
+    "现场准备",
 )
 PRIVATE_EXAMPLE_GUIDANCE = (
     "COM_PRIVATE",
@@ -91,7 +91,7 @@ def test_readme_korean_overview_contract():
 
     required_phrases = (
         "Apple Notification Center Service (ANCS)",
-        "블루투스(BLE)를 통해 아이폰 등의 iOS 기기 알림",
+        "通过蓝牙 (BLE) 将 iPhone 等 iOS 设备的通知",
         "iPhone → BLE ANCS → ESP32 → Wi-Fi/MQTT → Home Assistant",
     )
     for phrase in required_phrases:
@@ -101,11 +101,11 @@ def test_readme_korean_overview_contract():
 def test_readme_korean_guide_headings_are_structured_and_ordered():
     readme = read_text("README.md")
     heading_patterns = (
-        r"^## 빠른 설치\s*$",
-        r"^## Wi-Fi와 MQTT 설정\s*$",
-        r"^## iPhone 등록\s*$",
-        r"^## Home Assistant와 HACS\s*$",
-        r"^## 문제 해결\s*$",
+        r"^## 快速安装\s*$",
+        r"^## Wi-Fi 与 MQTT 设置\s*$",
+        r"^## iPhone 注册\s*$",
+        r"^## Home Assistant 与 HACS\s*$",
+        r"^## 问题排查\s*$",
     )
 
     positions = []
@@ -140,11 +140,11 @@ def test_installer_distinguishes_firmware_flashing_from_hacs_integration():
     index = read_text("docs/index.html")
 
     assert "Apple Notification Center Service (ANCS)" in index
-    assert "블루투스(BLE)를 통해 아이폰 등의 iOS 기기 알림" in index
-    assert "이 페이지는 ESP32 펌웨어 설치용입니다." in index
+    assert "通过蓝牙 (BLE) 将 iPhone 等 iOS 设备的通知" in index
+    assert "本页面用于安装 ESP32 固件。" in index
     assert (
-        "HACS는 Home Assistant 동반 통합만 설치하며 "
-        "ESP32 펌웨어를 설치하거나 업데이트하지 않습니다."
+        "HACS 只安装 Home Assistant 伴侣集成，"
+        "不会安装或更新 ESP32 固件。"
     ) in index
 
 
@@ -238,13 +238,13 @@ def test_readmes_include_hacs_my_link_and_firmware_boundary():
         assert HACS_MY_LINK in content, surface
         assert HACS_BADGE_MARKDOWN in content, surface
         assert "ESP32" in content, surface
-        assert "firmware" in content.lower() or "펌웨어" in content, surface
+        assert "firmware" in content.lower() or "固件" in content, surface
         assert "HACS" in content, surface
 
     korean = read_text("README.md")
     english = read_text("README.en.md")
-    assert "HACS는 Home Assistant 동반 통합만 설치합니다" in korean
-    assert "ESP32 펌웨어를 설치하거나 업데이트하지 않습니다" in korean
+    assert "HACS 只安装 Home Assistant 伴侣集成" in korean
+    assert "不会安装或更新 ESP32 固件" in korean
     assert "HACS installs only the Home Assistant companion integration" in english
     assert "never flashes or updates ESP32 firmware" in english
     assert "repository name and URL remain `HA-iOS-ANCS`" in english
@@ -255,14 +255,14 @@ def test_readmes_document_manual_hacs_custom_repository_installation():
     english = read_text("README.en.md")
 
     korean_phrases = (
-        "### HACS 설치",
-        "아래 버튼을 누르면 Home Assistant의 HACS 커스텀 저장소 추가 화면으로 이동합니다.",
-        "[![Home Assistant에서 HACS 저장소 열기](https://my.home-assistant.io/badges/hacs_repository.svg)]",
+        "### HACS 安装",
+        "按下下方按钮将打开 Home Assistant 的 HACS 自定义仓库添加页面。",
+        "[![在 Home Assistant 中打开 HACS 仓库](https://my.home-assistant.io/badges/hacs_repository.svg)]",
         "`HACS` → `Integrations`",
         "`Custom repositories`",
         f"`{CANONICAL_REPO_URL}`",
-        "`Category`에서 `Integration`을 선택하고 `Add`를 누릅니다.",
-        "`iOS ANCS`를 설치한 뒤 Home Assistant를 재시작합니다.",
+        "在 `Category` 中选择 `Integration`，然后点击 `Add`。",
+        "安装 `iOS ANCS` 后重启 Home Assistant。",
     )
     english_phrases = (
         "### HACS Installation",
@@ -286,13 +286,13 @@ def test_readmes_document_registry_backed_hacs_device_setup():
     english = read_text("README.en.md")
 
     korean_phrases = (
-        "HACS 통합을 추가할 때 MQTT 기본 토픽을 입력하지 않습니다.",
-        "호환 소스 기기가 하나면 자동으로 선택하고, 둘 이상이면 기기 이름 선택 목록을 표시합니다.",
-        "`알림` 이벤트 엔티티와 상세 엔티티는 MQTT 장치와 분리된 별도 `iOS ANCS (...)` 장치에 등록됩니다.",
-        "MQTT 장치를 `via_device`로 연결하지 않으며",
-        "MQTT 알림이 retained가 아니어도 Home Assistant 재시작 뒤 상세 센서가 복원됩니다.",
-        "저장된 세부정보를 새 이벤트로 재생하지 않습니다.",
-        "엔티티 ID와 기록을 보존한 채 별도 iOS ANCS 장치로 이동합니다.",
+        "添加 HACS 集成时不会要求输入 MQTT 基础主题。",
+        "只有一台兼容源设备时会自动选择，多台时按设备名称显示选择列表。",
+        "`通知` 事件实体和详情实体会注册到与 MQTT 设备分离的独立 `iOS ANCS (...)` 设备上。",
+        "不会通过 `via_device` 关联 MQTT 设备，",
+        "即使 MQTT 通知不是 retained，重启 Home Assistant 后详情传感器也会恢复。",
+        "不会把已保存的详情重放为新事件。",
+        "在保留实体 ID 和历史记录的前提下迁移到独立的 iOS ANCS 设备。",
     )
     english_phrases = (
         "Adding the HACS integration does not ask for an MQTT base topic.",
@@ -315,19 +315,19 @@ def test_readmes_document_companion_details_mqtt_coexistence_and_privacy():
     english = read_text("README.en.md")
 
     korean_phrases = (
-        "MQTT Discovery 엔터티를 변경하거나 비활성화하지 않습니다.",
-        "별도 iOS ANCS 장치에 알림 이벤트",
-        "목적별 센서 23개와 엄격한 바이너리 센서 12개",
-        "iPhone이 ANCS로 제공한 현지화된 Display Name을 우선 사용",
-        "기존 정적 매핑과 원본 앱 ID 순서로 폴백",
-        "진단용 `원본 알림` 센서",
-        "진단용 BLE 연결 바이너리 센서",
-        "Home Assistant에 이미 등록된 MQTT Discovery 장치 상태 엔티티를 통해 파생",
-        "MQTT 장치와 엔티티는 분리된 상태로 활성화되고 변경되지 않습니다",
-        "ESP32 펌웨어 재플래시가 필요하지 않습니다",
-        "센서 상태는 최대 255자",
-        "전체 원본 JSON은 속성에 유지됩니다.",
-        "Recorder에서 제외",
+        "不会修改或禁用 MQTT Discovery 实体。",
+        "独立 iOS ANCS 设备上的通知事件",
+        "23 个专用传感器和 12 个严格二进制传感器",
+        "优先使用 iPhone 通过 ANCS 提供的本地化 Display Name",
+        "按现有静态映射、原始 App ID 的顺序回退",
+        "诊断用 `原始通知` 传感器",
+        "诊断用 BLE 连接二进制传感器",
+        "经由 Home Assistant 中已注册的 MQTT Discovery 设备状态实体派生",
+        "MQTT 设备与实体保持分离、启用且不被修改",
+        "无需重新刷写 ESP32 固件",
+        "传感器状态最长 255 字符",
+        "完整原始 JSON 保留在属性中。",
+        "已从 Recorder 排除",
     )
     english_phrases = (
         "keeps MQTT Discovery entities unchanged and enabled",

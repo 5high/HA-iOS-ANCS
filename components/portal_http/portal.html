@@ -1,21 +1,21 @@
 <!doctype html>
-<html lang="ko">
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f4f6f8">
-  <title>iOS 알림 브리지 설정</title>
+  <title>iOS 通知桥接设置</title>
   <link rel="stylesheet" href="/portal.css">
 </head>
 <body>
   <main class="app-shell">
     <header class="hero">
       <p class="eyebrow">ESP32 · iOS ANCS</p>
-      <h1>알림 브리지 설정</h1>
-      <p class="hero-copy">iPhone 알림을 MQTT로 Home Assistant에 전달합니다.</p>
+      <h1>通知桥接设置</h1>
+      <p class="hero-copy">将 iPhone 通知经 MQTT 传递到 Home Assistant。</p>
       <div class="device-line">
         <span class="device-mark" aria-hidden="true"></span>
-        <span id="device-name">기기 정보를 불러오는 중</span>
+        <span id="device-name">正在读取设备信息</span>
       </div>
       <p id="message" class="message" role="status" aria-live="polite"></p>
     </header>
@@ -23,10 +23,10 @@
     <section class="panel status-panel" aria-labelledby="status-title">
       <div class="section-heading">
         <div>
-          <p class="section-kicker">현재 상태</p>
-          <h2 id="status-title">연결 준비도</h2>
+          <p class="section-kicker">当前状态</p>
+          <h2 id="status-title">连接就绪状态</h2>
         </div>
-        <button class="button button-quiet button-compact" id="refresh-status" type="button">새로고침</button>
+        <button class="button button-quiet button-compact" id="refresh-status" type="button">刷新</button>
       </div>
 
       <div id="status" class="status-grid" aria-live="polite">
@@ -34,83 +34,83 @@
           <span class="status-dot" aria-hidden="true"></span>
           <div>
             <span class="status-label">Wi-Fi</span>
-            <strong id="status-wifi-value">확인 중</strong>
-            <small id="status-wifi-detail">네트워크 상태를 읽고 있습니다</small>
+            <strong id="status-wifi-value">确认中</strong>
+            <small id="status-wifi-detail">正在读取网络状态</small>
           </div>
         </article>
         <article class="status-tile" id="status-mqtt" data-state="neutral">
           <span class="status-dot" aria-hidden="true"></span>
           <div>
-            <span class="status-label">MQTT 브로커</span>
-            <strong id="status-mqtt-value">확인 중</strong>
-            <small id="status-mqtt-detail">브로커 상태를 읽고 있습니다</small>
+            <span class="status-label">MQTT Broker</span>
+            <strong id="status-mqtt-value">确认中</strong>
+            <small id="status-mqtt-detail">正在读取 Broker 状态</small>
           </div>
         </article>
         <article class="status-tile" id="status-ble" data-state="neutral">
           <span class="status-dot" aria-hidden="true"></span>
           <div>
             <span class="status-label">iPhone</span>
-            <strong id="status-ble-value">확인 중</strong>
-            <small id="status-ble-detail">Bluetooth 상태를 읽고 있습니다</small>
+            <strong id="status-ble-value">确认中</strong>
+            <small id="status-ble-detail">正在读取蓝牙状态</small>
           </div>
         </article>
         <article class="status-tile" id="status-relay" data-state="neutral">
           <span class="status-dot" aria-hidden="true"></span>
           <div>
-            <span class="status-label">알림 전달</span>
-            <strong id="status-relay-value">0건 전송</strong>
-            <small id="status-relay-detail">새 알림을 기다리고 있습니다</small>
+            <span class="status-label">通知传递</span>
+            <strong id="status-relay-value">已发送 0 条</strong>
+            <small id="status-relay-detail">正在等待新通知</small>
           </div>
         </article>
       </div>
 
       <div class="status-actions">
         <div>
-          <strong>Home Assistant 등록과 전달 경로 확인</strong>
-          <small>MQTT 연결 직후 기기 Discovery가 자동 발행됩니다. 실제 iPhone 알림 없이도 테스트 알림으로 센서 상태까지 확인할 수 있습니다.</small>
+          <strong>验证 Home Assistant 注册与传递路径</strong>
+          <small>MQTT 连接成功后会自动发布设备 Discovery。无需真实 iPhone 通知，也可用测试通知验证到传感器状态。</small>
         </div>
-        <button class="button button-primary" id="test-notification" type="button" disabled>테스트 알림 보내기</button>
+        <button class="button button-primary" id="test-notification" type="button" disabled>发送测试通知</button>
       </div>
     </section>
 
     <form id="mqtt-config" class="panel setup-form">
       <div class="section-heading">
         <div>
-          <p class="section-kicker">필수 설정</p>
-          <h2>네트워크와 MQTT</h2>
+          <p class="section-kicker">必做设置</p>
+          <h2>网络与 MQTT</h2>
         </div>
-        <span class="step-badge">한 번에 저장</span>
+        <span class="step-badge">一次保存</span>
       </div>
 
       <section id="wifi-config" class="form-section" aria-labelledby="wifi-title">
         <div class="form-section-heading">
           <span class="step-number" aria-hidden="true">1</span>
           <div>
-            <h3 id="wifi-title">Wi-Fi 선택</h3>
-            <p>연결할 2.4 GHz Wi-Fi를 선택하세요.</p>
+            <h3 id="wifi-title">选择 Wi-Fi</h3>
+            <p>请选择要连接的 2.4 GHz Wi-Fi。</p>
           </div>
         </div>
 
         <div class="scan-row">
           <div class="field">
-            <label for="wifi-ssid">검색된 네트워크</label>
+            <label for="wifi-ssid">搜索到的网络</label>
             <select id="wifi-ssid">
-              <option value="">먼저 Wi-Fi를 검색하세요</option>
+              <option value="">请先搜索 Wi-Fi</option>
             </select>
           </div>
-          <button class="button button-secondary scan-button" type="button" id="scan-wifi">Wi-Fi 검색</button>
+          <button class="button button-secondary scan-button" type="button" id="scan-wifi">搜索 Wi-Fi</button>
         </div>
 
         <div class="field">
-          <label for="wifi-ssid-manual">직접 입력 <span class="optional">선택</span></label>
-          <input id="wifi-ssid-manual" maxlength="32" placeholder="목록에 없을 때 SSID 입력" autocomplete="off">
-          <small>직접 입력하면 검색 목록보다 우선 적용됩니다.</small>
+          <label for="wifi-ssid-manual">手动输入 <span class="optional">可选</span></label>
+          <input id="wifi-ssid-manual" maxlength="32" placeholder="列表中没有时请输入 SSID" autocomplete="off">
+          <small>手动输入优先生效，覆盖搜索列表。</small>
         </div>
 
         <div class="field">
-          <label for="wifi-password">Wi-Fi 비밀번호</label>
-          <input id="wifi-password" type="password" maxlength="64" autocomplete="new-password" placeholder="비밀번호 입력">
-          <small id="wifi-password-help">암호가 없는 네트워크는 비워 두세요.</small>
+          <label for="wifi-password">Wi-Fi 密码</label>
+          <input id="wifi-password" type="password" maxlength="64" autocomplete="new-password" placeholder="输入密码">
+          <small id="wifi-password-help">开放网络请留空。</small>
         </div>
       </section>
 
@@ -118,39 +118,39 @@
         <div class="form-section-heading">
           <span class="step-number" aria-hidden="true">2</span>
           <div>
-            <h3 id="mqtt-title">MQTT 브로커</h3>
-            <p>Home Assistant에서 사용하는 MQTT 서버 정보를 입력하세요.</p>
+            <h3 id="mqtt-title">MQTT Broker</h3>
+            <p>请输入 Home Assistant 使用的 MQTT 服务器信息。</p>
           </div>
         </div>
 
         <div class="field-grid host-grid">
           <div class="field">
-            <label for="mqtt-host">서버 주소</label>
-            <input id="mqtt-host" required maxlength="128" placeholder="예: 192.168.0.10" inputmode="url" autocomplete="off">
+            <label for="mqtt-host">服务器地址</label>
+            <input id="mqtt-host" required maxlength="128" placeholder="例如：192.168.0.10" inputmode="url" autocomplete="off">
           </div>
           <div class="field">
-            <label for="mqtt-port">포트</label>
+            <label for="mqtt-port">端口</label>
             <input id="mqtt-port" type="number" min="1" max="65535" value="1883" inputmode="numeric">
           </div>
         </div>
 
         <div class="field-grid">
           <div class="field">
-            <label for="mqtt-username">사용자 이름 <span class="optional">선택</span></label>
+            <label for="mqtt-username">用户名 <span class="optional">可选</span></label>
             <input id="mqtt-username" maxlength="128" autocomplete="username">
           </div>
           <div class="field">
-            <label for="mqtt-password">비밀번호 <span class="optional">선택</span></label>
+            <label for="mqtt-password">密码 <span class="optional">可选</span></label>
             <input id="mqtt-password" type="password" maxlength="256" autocomplete="new-password">
-            <small id="mqtt-password-help">브로커에 비밀번호가 없으면 비워 두세요.</small>
+            <small id="mqtt-password-help">Broker 无密码请留空。</small>
           </div>
         </div>
 
         <details id="advanced-mqtt" class="disclosure">
           <summary>
             <span>
-              <strong>고급 MQTT 설정</strong>
-              <small>권장값이 자동으로 적용됩니다</small>
+              <strong>MQTT 高级设置</strong>
+              <small>已自动应用推荐值</small>
             </span>
             <span class="summary-chevron" aria-hidden="true"></span>
           </summary>
@@ -158,33 +158,33 @@
             <div class="field">
               <div class="label-row">
                 <label for="mqtt-client-id">Client ID</label>
-                <span class="recommended">권장값</span>
+                <span class="recommended">推荐值</span>
               </div>
               <input id="mqtt-client-id" class="machine-value" required maxlength="64" autocomplete="off">
-              <small id="mqtt-client-id-help">이 기기를 MQTT에서 구분하는 고유 이름입니다.</small>
+              <small id="mqtt-client-id-help">本设备在 MQTT 中的唯一标识名。</small>
             </div>
 
             <div class="field">
               <div class="label-row">
                 <label for="mqtt-base-topic">Base topic</label>
-                <span class="recommended">권장값</span>
+                <span class="recommended">推荐值</span>
               </div>
               <input id="mqtt-base-topic" class="machine-value" required maxlength="128" autocomplete="off">
-              <small id="mqtt-base-topic-help">알림과 상태가 발행되는 MQTT 경로입니다.</small>
+              <small id="mqtt-base-topic-help">通知与状态发布的 MQTT 路径前缀。</small>
             </div>
 
             <label class="check-row" for="mqtt-tls">
               <input id="mqtt-tls" type="checkbox">
               <span>
-                <strong>TLS 보안 연결</strong>
-                <small>TLS 브로커를 사용할 때만 켜세요.</small>
+                <strong>TLS 安全连接</strong>
+                <small>仅在使用 TLS Broker 时开启。</small>
               </span>
             </label>
 
             <div class="field" id="mqtt-ca-field" hidden>
-              <label for="mqtt-ca">CA 인증서 PEM</label>
+              <label for="mqtt-ca">CA 证书 PEM</label>
               <textarea id="mqtt-ca" rows="7" maxlength="4096" spellcheck="false" placeholder="-----BEGIN CERTIFICATE-----"></textarea>
-              <small id="mqtt-ca-help">TLS를 켜면 CA 인증서가 필요합니다.</small>
+              <small id="mqtt-ca-help">开启 TLS 需要提供 CA 证书。</small>
             </div>
           </div>
         </details>
@@ -192,75 +192,168 @@
 
       <div class="form-note">
         <span aria-hidden="true">i</span>
-        <p>기존에 저장된 비밀번호와 인증서는 입력란을 비워 두면 유지됩니다. 연결된 적이 있는 MQTT 서버의 주소나 포트를 바꿀 때는 MQTT 비밀번호를 다시 입력해야 합니다.</p>
+        <p>留空即保留已保存的密码与证书。更改曾成功连接过的 MQTT 服务器地址或端口时，必须重新输入 MQTT 密码。</p>
       </div>
 
       <div class="form-actions">
-        <button class="button button-primary" id="save-connect" type="submit">저장하고 연결</button>
-        <button class="button button-secondary" id="mqtt-test" type="button">MQTT 연결 테스트</button>
+        <button class="button button-primary" id="save-connect" type="submit">保存并连接</button>
+        <button class="button button-secondary" id="mqtt-test" type="button">测试 MQTT 连接</button>
       </div>
     </form>
 
     <section class="panel ble-panel" aria-labelledby="ble-title">
       <div class="ble-copy">
         <p class="section-kicker">Bluetooth</p>
-        <h2 id="ble-title">iPhone 연결</h2>
-        <p id="ble-guidance">아래 버튼으로 등록을 시작하세요. 이 설정 페이지는 열린 상태로 유지되며, 등록 전에는 Bluetooth 등록 신호를 보내지 않습니다.</p>
+        <h2 id="ble-title">iPhone 连接</h2>
+        <p id="ble-guidance">请用下方按钮开始注册。本设置页面会保持打开；开始注册前不会发送蓝牙配对信号。</p>
       </div>
       <div class="ble-enroll-actions">
         <div id="ble-enroll-code" class="ble-enroll-code" role="status" aria-live="polite" hidden>
-          <span>iPhone 고정 PIN</span>
+          <span>iPhone 固定 PIN</span>
           <strong id="ble-enroll-code-value">------</strong>
-          <small>iPhone의 Bluetooth 등록 창에 입력하세요.</small>
+          <small>请输入到 iPhone 的蓝牙配对窗口。</small>
         </div>
-        <button class="button button-primary" id="start-enrollment" type="button" aria-describedby="ble-guidance">iPhone 기기 등록</button>
+        <button class="button button-primary" id="start-enrollment" type="button" aria-describedby="ble-guidance">注册 iPhone 设备</button>
       </div>
     </section>
 
     <details id="device-management" class="panel disclosure management">
       <summary>
         <span>
-          <strong>기기 관리</strong>
-          <small>재시작, iPhone 교체, 설정 초기화</small>
+          <strong>设备管理</strong>
+          <small>重启、更换 iPhone、重置设置</small>
         </span>
         <span class="summary-chevron" aria-hidden="true"></span>
       </summary>
       <div class="disclosure-body management-body">
         <section class="management-item">
           <div>
-            <h3>기기 재시작</h3>
-            <p>저장된 Wi-Fi, MQTT, iPhone 등록은 유지됩니다.</p>
+            <h3>重启设备</h3>
+            <p>已保存的 Wi-Fi、MQTT 与 iPhone 注册都会保留。</p>
           </div>
-          <button class="button button-secondary" id="restart" type="button">재시작</button>
+          <button class="button button-secondary" id="restart" type="button">重启</button>
         </section>
 
         <section class="management-item danger-zone">
           <div>
-            <h3>등록된 iPhone 교체</h3>
-            <p>기존 Bluetooth 등록을 지우고 새 iPhone 등록을 시작합니다.</p>
+            <h3>更换已注册的 iPhone</h3>
+            <p>将删除现有蓝牙配对并开始新的 iPhone 注册。</p>
           </div>
-          <label for="replace-confirmation">확인을 위해 <code>REPLACE ENROLLMENT</code> 입력</label>
+          <label for="replace-confirmation">请输入 <code>REPLACE ENROLLMENT</code> 以确认</label>
           <input id="replace-confirmation" autocomplete="off">
-          <button class="button button-danger" id="replace-enrollment" type="button">iPhone 등록 교체</button>
+          <button class="button button-danger" id="replace-enrollment" type="button">替换 iPhone 注册</button>
         </section>
 
         <section class="management-item danger-zone">
           <div>
-            <h3>네트워크 설정 초기화</h3>
-            <p>Wi-Fi와 MQTT 설정만 지웁니다. iPhone 등록은 유지됩니다.</p>
+            <h3>重置网络设置</h3>
+            <p>仅清除 Wi-Fi 与 MQTT 设置，iPhone 注册会保留。</p>
           </div>
-          <label for="reset-confirmation">확인을 위해 <code>RESET PROVISIONING</code> 입력</label>
+          <label for="reset-confirmation">请输入 <code>RESET PROVISIONING</code> 以确认</label>
           <input id="reset-confirmation" autocomplete="off">
-          <button class="button button-danger" id="reset-provisioning" type="button">네트워크 설정 초기화</button>
+          <button class="button button-danger" id="reset-provisioning" type="button">重置网络设置</button>
         </section>
       </div>
     </details>
 
     <footer>
       <span class="local-dot" aria-hidden="true"></span>
-      이 설정 페이지는 기기 내부에서만 열립니다.
+      本设置页面只能在设备内部网络打开。
     </footer>
   </main>
-  <script src="/portal.js"></script>
+  <script>
+(function () {
+  // Bilingual static copy: Chinese is the base markup; English replaces node text
+  // when the browser language is not Chinese.
+  var LANG = String(navigator.language || '').toLowerCase();
+  if (LANG.indexOf('zh') === 0) return;
+  document.documentElement.lang = 'en';
+  var MAP = {
+"留空即保留已保存的密码与证书。更改曾成功连接过的 MQTT 服务器地址或端口时，必须重新输入 MQTT 密码。": "Stored passwords and certificates are kept when the field is left empty. When you change the address or port of an MQTT server that connected before, re-enter the MQTT password.",
+"MQTT 连接成功后会自动发布设备 Discovery。无需真实 iPhone 通知，也可用测试通知验证到传感器状态。": "Device Discovery publishes right after MQTT connects. A test notification verifies the sensor chain without a real iPhone notification.",
+"请用下方按钮开始注册。本设置页面会保持打开；开始注册前不会发送蓝牙配对信号。": "Start enrollment with the button below. This settings page stays open; no Bluetooth pairing signal is sent before enrollment starts.",
+"请输入 Home Assistant 使用的 MQTT 服务器信息。": "Enter the MQTT server used by Home Assistant.",
+"将删除现有蓝牙配对并开始新的 iPhone 注册。": "Removes the existing Bluetooth bond and starts a new iPhone enrollment.",
+"将 iPhone 通知经 MQTT 传递到 Home Assistant。": "Relays iPhone notifications to Home Assistant over MQTT.",
+"仅清除 Wi-Fi 与 MQTT 设置，iPhone 注册会保留。": "Clears only Wi-Fi and MQTT settings; the iPhone enrollment is kept.",
+"已保存的 Wi-Fi、MQTT 与 iPhone 注册都会保留。": "Stored Wi-Fi, MQTT, and iPhone enrollment are kept.",
+"请输入到 iPhone 的蓝牙配对窗口。": "Enter it in the iPhone Bluetooth pairing dialog.",
+"验证 Home Assistant 注册与传递路径": "Verify Home Assistant registration and the delivery path",
+"本设备在 MQTT 中的唯一标识名。": "A unique name identifying this device on MQTT.",
+"请选择要连接的 2.4 GHz Wi-Fi。": "Choose the 2.4 GHz Wi-Fi network to connect to.",
+"手动输入优先生效，覆盖搜索列表。": "A manual entry takes priority over the scan list.",
+"通知与状态发布的 MQTT 路径前缀。": "The MQTT path prefix for published notifications and status.",
+"本设置页面只能在设备内部网络打开。": "This settings page is only reachable from inside the device network.",
+"Broker 无密码请留空。": "Leave empty if the broker has no password.",
+"开启 TLS 需要提供 CA 证书。": "TLS requires a CA certificate.",
+"重启、更换 iPhone、重置设置": "Restart, replace iPhone, reset settings",
+"开放网络请留空。": "Leave empty for an open network.",
+"仅在使用 TLS Broker 时开启。": "Enable only when the broker uses TLS.",
+"正在读取网络状态": "Reading network status",
+"列表中没有时请输入 SSID": "Enter the SSID if it is missing from the list",
+"正在读取 Broker 状态": "Reading broker status",
+"正在等待新通知": "Waiting for a new notification",
+"请先搜索 Wi-Fi": "Scan for Wi-Fi first",
+"例如：192.168.0.10": "e.g. 192.168.0.10",
+"已自动应用推荐值": "Recommended values are applied automatically",
+"iOS 通知桥接设置": "iOS Notification Bridge Settings",
+"正在读取设备信息": "Loading device information",
+"iPhone 固定 PIN": "iPhone fixed PIN",
+"更换已注册的 iPhone": "Replace enrolled iPhone",
+"注册 iPhone 设备": "Enroll iPhone",
+"替换 iPhone 注册": "Replace iPhone enrollment",
+"测试 MQTT 连接": "Test MQTT connection",
+"重置网络设置": "Reset network settings",
+"发送测试通知": "Send test notification",
+"网络与 MQTT": "Network and MQTT",
+"Wi-Fi 密码": "Wi-Fi password",
+"MQTT 高级设置": "Advanced MQTT settings",
+"CA 证书 PEM": "CA certificate PEM",
+"通知桥接设置": "Notification Bridge Settings",
+"TLS 安全连接": "TLS secure connection",
+"iPhone 连接": "iPhone connection",
+"MQTT Broker": "MQTT broker",
+"选择 Wi-Fi": "Select Wi-Fi",
+"搜索到的网络": "Discovered networks",
+"搜索 Wi-Fi": "Scan Wi-Fi",
+"一次保存": "Save all at once",
+"输入密码": "Enter password",
+"保存并连接": "Save and connect",
+"连接就绪状态": "Connection readiness",
+"用户名": "Username",
+"重启设备": "Restart device",
+"为确认请": "To confirm, type",
+"当前状态": "Current status",
+"通知传递": "Notification relay",
+"已发送 0 条": "0 sent",
+"必做设置": "Required setup",
+"手动输入": "Manual entry",
+"服务器地址": "Server address",
+"设备管理": "Device management",
+"刷新": "Refresh",
+"确认中": "Checking",
+"密码": "Password",
+"推荐值": "Recommended",
+"重启": "Restart",
+"可选": "Optional",
+"端口": "Port"
+};
+  function tr(s) { var v = MAP[s.trim()]; return v === undefined ? null : { lead: s.slice(0, s.indexOf(s.trim())), tail: s.slice(s.indexOf(s.trim()) + s.trim().length), text: v }; }
+  var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  var node;
+  while ((node = walker.nextNode())) {
+    if (!node.nodeValue || !node.nodeValue.trim()) continue;
+    var hit = tr(node.nodeValue);
+    if (hit) node.nodeValue = hit.lead + hit.text + hit.tail;
+  }
+  ['placeholder', 'title', 'aria-label'].forEach(function (attr) {
+    document.querySelectorAll('[' + attr + ']').forEach(function (el) {
+      var hit = tr(el.getAttribute(attr));
+      if (hit) el.setAttribute(attr, hit.text);
+    });
+  });
+})();
+</script>
+<script src="/portal.js"></script>
 </body>
 </html>

@@ -5,7 +5,7 @@ const boards = {
     boot: "GPIO 0",
     validation: "v0.4.0 build verified",
     status: "BUILD VERIFIED",
-    description: "ESP32/WROOM-32 계열용 v0.4.0 ANCS-to-MQTT factory build입니다.",
+    description: "v0.4.0 ANCS-to-MQTT factory build for the ESP32/WROOM-32 family.",
     hash: "SHA256 A2F1AA9088ED",
   },
   esp32c2: {
@@ -14,7 +14,7 @@ const boards = {
     boot: "GPIO 9",
     validation: "v0.4.0 build verified",
     status: "BUILD VERIFIED",
-    description: "ESP32-C2 계열용 v0.4.0 ANCS-to-MQTT factory build입니다.",
+    description: "v0.4.0 ANCS-to-MQTT factory build for the ESP32-C2 family.",
     hash: "SHA256 D2899E6C9E4D",
   },
   esp32c3: {
@@ -23,7 +23,7 @@ const boards = {
     boot: "GPIO 9",
     validation: "v0.4.0 build verified",
     status: "BUILD VERIFIED",
-    description: "ESP32-C3 계열용 v0.4.0 ANCS-to-MQTT factory build입니다.",
+    description: "v0.4.0 ANCS-to-MQTT factory build for the ESP32-C3 family.",
     hash: "SHA256 D768DDE94A94",
   },
   esp32c5: {
@@ -32,7 +32,7 @@ const boards = {
     boot: "GPIO 28",
     validation: "v0.4.0 build verified",
     status: "BUILD VERIFIED",
-    description: "ESP32-C5 계열용 v0.4.0 ANCS-to-MQTT factory build입니다.",
+    description: "v0.4.0 ANCS-to-MQTT factory build for the ESP32-C5 family.",
     hash: "SHA256 0C481C3C416C",
   },
   esp32c6: {
@@ -41,7 +41,7 @@ const boards = {
     boot: "GPIO 9",
     validation: "v0.4.0 build verified",
     status: "BUILD VERIFIED",
-    description: "ESP32-C6 계열용 v0.4.0 ANCS-to-MQTT factory build입니다.",
+    description: "v0.4.0 ANCS-to-MQTT factory build for the ESP32-C6 family.",
     hash: "SHA256 334472B2C151",
   },
   esp32c61: {
@@ -51,7 +51,7 @@ const boards = {
     validation: "v0.4.0 build verified",
     status: "BUILD VERIFIED",
     description:
-      "ESP32-C61은 ESP32-C6의 리비전이 아니라 별도 최신 칩입니다. 실제 보드 각인이 C61인 경우에 선택하세요.",
+      "The ESP32-C61 is a separate newer chip, not a revision of the ESP32-C6. Select it only when the board is actually marked C61.",
     hash: "SHA256 687ECDADCB18",
   },
   esp32s3: {
@@ -60,9 +60,38 @@ const boards = {
     boot: "GPIO 0",
     validation: "v0.4.0 build verified",
     status: "BUILD VERIFIED",
-    description: "ESP32-S3 계열용 v0.4.0 ANCS-to-MQTT factory build입니다.",
+    description: "v0.4.0 ANCS-to-MQTT factory build for the ESP32-S3 family.",
     hash: "SHA256 6D165A01729B",
   },
+};
+
+// Bilingual (zh/en) installer copy. English is the base; Chinese overrides apply
+// when the browser language is Chinese. Static HTML carries its own data-i18n-zh
+// spans toggled by docs/i18n.js loaded from index.html.
+const INSTALLER_LANG = (typeof navigator !== "undefined" &&
+  String(navigator.language || "").toLowerCase().startsWith("zh")) ? "zh" : "en";
+
+const BOARD_DESCRIPTIONS_ZH = {
+  esp32: "适用于 ESP32/WROOM-32 系列的 v0.4.0 ANCS-to-MQTT 出厂镜像。",
+  esp32c2: "适用于 ESP32-C2 系列的 v0.4.0 ANCS-to-MQTT 出厂镜像。",
+  esp32c3: "适用于 ESP32-C3 系列的 v0.4.0 ANCS-to-MQTT 出厂镜像。",
+  esp32c5: "适用于 ESP32-C5 系列的 v0.4.0 ANCS-to-MQTT 出厂镜像。",
+  esp32c6: "适用于 ESP32-C6 系列的 v0.4.0 ANCS-to-MQTT 出厂镜像。",
+  esp32c61: "ESP32-C61 不是 ESP32-C6 的改版，而是一颗独立的新芯片。仅在板子实际丝印为 C61 时选择。",
+  esp32s3: "适用于 ESP32-S3 系列的 v0.4.0 ANCS-to-MQTT 出厂镜像。",
+};
+
+function t(label) {
+  return INSTALLER_LANG === "zh" && RUNTIME_LABELS_ZH[label]
+    ? RUNTIME_LABELS_ZH[label]
+    : label;
+}
+
+const RUNTIME_LABELS_ZH = {
+  "Secure context": "连接安全",
+  "HTTPS required": "需要 HTTPS",
+  "Install ready": "可安装",
+  "Chrome or Edge required": "需要 Chrome 或 Edge",
 };
 
 function setRuntimeStatus(elementId, lampId, supported, goodText, badText) {
@@ -99,7 +128,10 @@ function applyBoard(target) {
   document.getElementById("target-validation").textContent = board.validation;
   document.getElementById("selected-name").textContent = board.name;
   document.getElementById("selected-status").textContent = board.status;
-  document.getElementById("selected-description").textContent = board.description;
+  document.getElementById("selected-description").textContent =
+    INSTALLER_LANG === "zh" && BOARD_DESCRIPTIONS_ZH[target]
+      ? BOARD_DESCRIPTIONS_ZH[target]
+      : board.description;
   document.getElementById("build-hash").textContent = board.hash;
 }
 
@@ -114,16 +146,16 @@ setRuntimeStatus(
   "secure-status",
   "secure-lamp",
   window.isSecureContext,
-  "연결 안전",
-  "HTTPS 필요",
+  t("Secure context"),
+  t("HTTPS required"),
 );
 
 setRuntimeStatus(
   "serial-status",
   "serial-lamp",
   "serial" in navigator,
-  "설치 가능",
-  "Chrome 또는 Edge 필요",
+  t("Install ready"),
+  t("Chrome or Edge required"),
 );
 
 updateClock();

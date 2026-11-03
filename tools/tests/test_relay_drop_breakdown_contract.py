@@ -92,8 +92,8 @@ def test_firmware_status_exposes_each_drop_reason():
         assert name in app
         assert f'"{name}"' in api
         assert name in frontend
-    assert "연결 장애 중" not in frontend
-    assert "부팅 후 제외" in frontend
+    assert "连接中断期间" not in frontend
+    assert "自启动后排除" in frontend
 
 
 def test_portal_renders_cumulative_drop_breakdown():
@@ -113,8 +113,8 @@ def test_portal_renders_cumulative_drop_breakdown():
         }
     )
     assert rendered == {
-        "value": "4건 전송",
-        "detail": "부팅 후 제외 63건 · MQTT 미연결 60건 · 정책 필터 3건",
+        "value": "已发送 4 条",
+        "detail": "自启动后排除 63 条 · MQTT 未连接 60 条 · 策略过滤 3 条",
         "state": "ready",
     }
 
@@ -133,6 +133,6 @@ def test_portal_marks_legacy_total_as_unclassified():
         }
     )
     assert rendered["detail"] == (
-        "부팅 후 제외 7건 · 이전 펌웨어는 제외 원인을 구분하지 않습니다"
+        "自启动后排除 7 条 · 旧固件无法区分排除原因"
     )
     assert rendered["state"] == "error"

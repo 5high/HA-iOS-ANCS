@@ -29,8 +29,8 @@ The project bridges iOS notifications into local Home Assistant automations thro
 2. Select the board model and flash the factory image with ESP Web Tools.
 3. Join the board's `IOS-ANCS-SETUP-XXXXXX` Wi-Fi using password `ancs-xxxxxx`.
 4. Open `http://192.168.4.1` and save Wi-Fi and MQTT settings only. The portal does not store Home Assistant or iPhone notification settings.
-5. Without leaving `http://192.168.4.1`, press **iPhone 기기 등록** in the setup portal to open the 120-second enrollment window. The Home Assistant **iPhone 등록 시작** button and holding BOOT for 3 seconds remain available alternatives.
-6. Read the fixed PIN `123456` shown in the setup portal, select the device in iOS Bluetooth settings, enter the code, and allow notification sharing. Verify that `최근 알림` and `앱 이름` update in Home Assistant.
+5. Without leaving `http://192.168.4.1`, press **Enroll iPhone** in the setup portal to open the 120-second enrollment window. The Home Assistant **Start iPhone enrollment** button and holding BOOT for 3 seconds remain available alternatives.
+6. Read the fixed PIN `123456` shown in the setup portal, select the device in iOS Bluetooth settings, enter the code, and allow notification sharing. Verify that `Recent notification` and `App name` update in Home Assistant.
 
 `XXXXXX` is the last six hexadecimal digits of the base Wi-Fi MAC address. The SSID uses uppercase hex and the password uses the same suffix in lowercase. The generic form is `ancs-<lowercase_suffix>`, and it is not a model number.
 
@@ -63,7 +63,7 @@ The table describes the published v0.4.0 images. Build verification, physical fl
 
 ## Home Assistant And HACS
 
-MQTT Discovery works without HACS. After the device connects to the broker, it publishes retained Discovery configs and Home Assistant creates the device, `최근 알림`, `앱 이름`, status sensor, and **iPhone 등록 시작** button.
+MQTT Discovery works without HACS. After the device connects to the broker, it publishes retained Discovery configs and Home Assistant creates the device, `Recent notification`, `App name`, status sensor, and **Start iPhone enrollment** button.
 
 HACS installs only the Home Assistant companion integration; it never flashes or updates ESP32 firmware. To install as a HACS custom repository, open the [iOS ANCS HACS My Link](https://my.home-assistant.io/redirect/hacs_repository/?owner=1bobby-git&repository=HA-iOS-ANCS&category=integration) and confirm the repository addition in Home Assistant. The integration display name is `iOS ANCS`; the repository name and URL remain `HA-iOS-ANCS` for existing HACS installations. This documents custom-repository installation only; it does not claim default HACS-store acceptance.
 
@@ -105,7 +105,7 @@ Notification JSON preserves the original `app_id` and adds a friendly `app_name`
 - If `IOS-ANCS-SETUP-XXXXXX` is missing, verify power and flashing, then hold BOOT for 3 seconds to open the recovery window.
 - If `http://192.168.4.1` does not open, confirm you are connected to the setup AP and temporarily disable VPN or mobile-data routing.
 - If MQTT does not connect, check host, port, TLS CA, username/password, broker ACLs, and duplicate Client IDs.
-- If the iPhone does not see the device, reopen the 120-second enrollment window with setup-portal **iPhone 기기 등록**, Home Assistant **iPhone 등록 시작**, or BOOT for 3 seconds.
+- If the iPhone does not see the device, reopen the 120-second enrollment window with setup-portal **Enroll iPhone**, Home Assistant **Start iPhone enrollment**, or BOOT for 3 seconds.
 - If iOS asks for a PIN, enter the fixed PIN `123456` shown in the setup portal while enrollment is open and allow notification sharing.
 - If Home Assistant entities are missing, check the MQTT integration, Discovery, retained configs, and `<base>/state`.
 

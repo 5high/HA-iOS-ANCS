@@ -14,7 +14,7 @@ if [[ -z "${idf_path}" ]]; then
 fi
 
 if [[ -z "${idf_path}" || ! -f "${idf_path}/export.sh" ]]; then
-    echo "ESP-IDF v6.0.2 경로를 IDF_PATH로 지정하십시오." >&2
+    echo "Set IDF_PATH to the ESP-IDF v6.0.2 path." >&2
     exit 2
 fi
 
@@ -29,5 +29,5 @@ idf.py --version
 idf.py -B "build-${target}" -p "${port}" flash
 
 echo
-echo "플래시 완료. iPhone 페어링 후 다음 명령으로 캡처를 검증하십시오:"
+echo "Flash complete. After pairing the iPhone, verify capture with:"
 echo "python3 tools/verify_capture.py --target ${target} --port ${port} --baud 115200 --timeout 180 --output artifacts/ancs-capture.jsonl"

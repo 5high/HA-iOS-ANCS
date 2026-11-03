@@ -199,7 +199,8 @@ def test_installer_models_are_sorted_and_c61_is_explained():
         "ESP32-C61",
         "ESP32-S3",
     ]
-    assert "ESP32-C61은 ESP32-C6의 리비전이 아니라 별도 최신 칩입니다." in javascript
+    assert ("ESP32-C61 不是 ESP32-C6 的改版，而是一颗独立的新芯片。" in javascript or
+            "ESP32-C61 is a separate newer chip, not a revision of the ESP32-C6." in javascript)
 
 
 def test_unified_manifest_has_unique_builds_and_existing_binaries():
@@ -323,5 +324,5 @@ def test_v034_release_guidance_documents_compact_home_assistant_entities():
         assert "case-sensitive" in source
     for key in ("ready", "uptime_seconds", "ble_connected", "wifi_ssid"):
         assert key in readme
-    for label in ("최근 알림", "알림 제목", "알림 내용", "앱 이름", "장치 상태", "장치 재시작"):
+    for label in ("Recent notification", "Notification title", "Notification message", "App name", "Device status", "Device restart"):
         assert label in readme

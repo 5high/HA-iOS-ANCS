@@ -29,9 +29,9 @@ def notification(**overrides):
         "category": "social",
         "category_count": 1,
         "app_id": "com.example.test",
-        "title": "테스트",
+        "title": "Test",
         "subtitle": "",
-        "message": "본문",
+        "message": "Body",
         "message_size": "6",
         "date": "20260728T164500",
         "complete": True,
@@ -78,8 +78,8 @@ def test_pass_stream_writes_raw_and_capture_files(tmp_path: Path):
     )
 
     assert result["app_id"] == "com.example.test"
-    assert "테스트" in raw_path.read_text(encoding="utf-8")
-    assert json.loads(capture_path.read_text(encoding="utf-8"))["message"] == "본문"
+    assert "Test" in raw_path.read_text(encoding="utf-8")
+    assert json.loads(capture_path.read_text(encoding="utf-8"))["message"] == "Body"
 
 
 def test_empty_title_subtitle_and_message_fails_by_default():

@@ -87,7 +87,7 @@ def test_discovery_and_payload_contracts_are_present():
     assert "json_attributes_topic" in source
     assert "homeassistant/sensor/" in source
     assert "%s_last_notification" in source
-    assert "최근 알림" in source
+    assert "Recent notification" in source
     assert '\\"object_id\\":' in source
     assert "topic_has_publish_wildcard" in source
     assert "discovery_id_is_safe" in source
@@ -113,7 +113,7 @@ def test_home_assistant_restart_button_is_exact_non_retained_and_subscribed():
     assert "mqtt_relay_build_restart_discovery_topic" in header
     assert "mqtt_relay_build_restart_discovery_payload" in header
     assert "homeassistant/button/%s/restart/config" in source
-    assert "장치 재시작" in source
+    assert "Device restart" in source
     assert "RESTART" in source
     assert "mqtt_relay_is_restart_command" in source
     connected = source.split("if (event_id == MQTT_EVENT_CONNECTED)", 1)[1].split(
@@ -327,7 +327,7 @@ def test_device_metadata_and_compact_status_discovery_contracts_are_present():
     assert "mqtt_relay_build_legacy_discovery_topic" in header
     for key in ("notification_title", "notification_message", "app_name"):
         assert f'.key = "{key}"' in source
-    for name in ("알림 제목", "알림 내용", "앱 이름", "장치 상태"):
+    for name in ("Notification title", "Notification message", "App name", "Device status"):
         assert name in source
     assert r'\"entity_category\":\"diagnostic\"' in source
     assert 'connectivity' in source

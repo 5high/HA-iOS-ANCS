@@ -70,9 +70,9 @@ static void make_complete_fixture(fixture_builder_t *fixture, uint32_t uid)
 {
     fixture_begin(fixture, uid);
     fixture_attribute(fixture, 0, "com.apple.MobileSMS");
-    fixture_attribute(fixture, 1, "택배 도착");
+    fixture_attribute(fixture, 1, "Package delivered");
     fixture_attribute(fixture, 2, "");
-    fixture_attribute(fixture, 3, "현관 앞에 두었습니다.");
+    fixture_attribute(fixture, 3, "Left at the front door.");
     fixture_attribute(fixture, 4, "29");
     fixture_attribute(fixture, 5, "20260728T164500");
 }
@@ -388,9 +388,9 @@ TEST_CASE("data parser reconstructs all requested attributes", "[ancs][parser]")
                                             0x12345678));
     TEST_ASSERT_TRUE(notification.complete);
     TEST_ASSERT_EQUAL_STRING("com.apple.MobileSMS", notification.app_id);
-    TEST_ASSERT_EQUAL_STRING("택배 도착", notification.title);
+    TEST_ASSERT_EQUAL_STRING("Package delivered", notification.title);
     TEST_ASSERT_EQUAL_STRING("", notification.subtitle);
-    TEST_ASSERT_EQUAL_STRING("현관 앞에 두었습니다.", notification.message);
+    TEST_ASSERT_EQUAL_STRING("Left at the front door.", notification.message);
     TEST_ASSERT_EQUAL_STRING("29", notification.message_size_raw);
     TEST_ASSERT_EQUAL_STRING("20260728T164500", notification.date_raw);
 }
@@ -409,8 +409,8 @@ TEST_CASE("data parser handles every two-fragment byte boundary", "[ancs][parser
                                                 split,
                                                 &notification,
                                                 0x44332211));
-        TEST_ASSERT_EQUAL_STRING("택배 도착", notification.title);
-        TEST_ASSERT_EQUAL_STRING("현관 앞에 두었습니다.", notification.message);
+        TEST_ASSERT_EQUAL_STRING("Package delivered", notification.title);
+        TEST_ASSERT_EQUAL_STRING("Left at the front door.", notification.message);
     }
 }
 
@@ -433,7 +433,7 @@ TEST_CASE("data parser handles one byte at a time", "[ancs][parser]")
             TEST_ASSERT_EQUAL(ANCS_PARSER_COMPLETE, result);
         }
     }
-    TEST_ASSERT_EQUAL_STRING("택배 도착", notification.title);
+    TEST_ASSERT_EQUAL_STRING("Package delivered", notification.title);
 }
 
 TEST_CASE("empty title subtitle and message are complete attributes", "[ancs][parser]")

@@ -1,6 +1,6 @@
 <!-- project-branding:start -->
 <p align="center">
-  <img src="custom_components/ha_ios_ancs/brand/logo@2x.png" alt="iOS ANCS 로고" width="520">
+  <img src="custom_components/ha_ios_ancs/brand/logo@2x.png" alt="iOS ANCS 标志" width="520">
 </p>
 <p align="center">
   <a href="https://github.com/1bobby-git/HA-iOS-ANCS/stargazers"><img src="https://img.shields.io/github/stars/1bobby-git/HA-iOS-ANCS?style=flat-square&logo=github&label=Stars" alt="GitHub Stars"></a>
@@ -13,109 +13,109 @@
 
 # Home Assistant iOS ANCS
 
-[English](README.en.md) | [GitHub](https://github.com/1bobby-git/HA-iOS-ANCS) | [브라우저 설치 페이지](https://1bobby-git.github.io/HA-iOS-ANCS/)
+[English](README.en.md) | [GitHub](https://github.com/1bobby-git/HA-iOS-ANCS) | [浏览器安装页面](https://1bobby-git.github.io/HA-iOS-ANCS/)
 
-Home Assistant iOS ANCS는 ESP32가 iPhone 알림을 BLE ANCS로 받고 MQTT로 로컬 Home Assistant에 전달하도록 만든 펌웨어와 선택형 Home Assistant companion integration입니다. MQTT Discovery만으로 기본 엔티티와 버튼이 생성되며, HACS는 Home Assistant 쪽 통합 설치만 담당합니다. ESP32 펌웨어 설치는 브라우저 설치 페이지나 소스 빌드 도구로 진행합니다.
+Home Assistant iOS ANCS 是一套 ESP32 固件加可选的 Home Assistant 伴侣集成：ESP32 通过蓝牙 (BLE) 将 iPhone 等 iOS 设备的通知，经 MQTT 转发到本地 Home Assistant。仅靠 MQTT Discovery 即可生成基础实体和按钮；HACS 只负责安装 Home Assistant 一侧的集成。ESP32 固件的安装请使用浏览器安装页面或源码构建工具。
 
-**Apple Notification Center Service (ANCS)**: 블루투스(BLE)를 통해 아이폰 등의 iOS 기기 알림을 스마트워치나 이어폰 같은 주변 기기로 전달해 주는 애플 규격 서비스입니다
+**Apple Notification Center Service (ANCS)**：苹果的标准蓝牙低功耗服务，允许 iPhone 等 iOS 设备在配对并允许通知共享后，把通知元数据分享给附近的配件。
 
 ```text
 iPhone → BLE ANCS → ESP32 → Wi-Fi/MQTT → Home Assistant
 ```
 
 
-### 설정 포털 자체 진단
+### 设置门户自检
 
-펌웨어 0.3.7부터 MQTT 연결 직후 Home Assistant Discovery가 먼저 발행되므로 실제 iPhone 알림이 없어도 기기가 등록됩니다. 설정 포털의 **테스트 알림 보내기**는 ESP32 → MQTT → Home Assistant 전체 경로를 확인하며, 브로커 연결 실패 시 TCP 시간 초과·포트 거부·인증 거부와 재시도 간격을 표시합니다. 설정 저장 후에는 테스트를 마칠 수 있도록 설정 포털을 10분간 유지합니다.
+从固件 0.3.7 起，MQTT 连接成功后会先发布 Home Assistant Discovery，因此没有真实 iPhone 通知设备也会完成注册。设置门户的 **发送测试通知** 可验证 ESP32 → MQTT → Home Assistant 的完整链路；连接失败时会显示 TCP 超时、端口拒绝、认证被拒以及重试间隔。保存设置后，设置门户会保持开启 10 分钟以便完成测试。
 
-## 개발 배경
+## 开发背景
 
-이 프로젝트는 iOS 앱이나 Apple 개발자 계정 없이, 로컬 네트워크 안에서 iOS 알림을 Home Assistant 자동화에 연결하기 위한 ESP32+MQTT 브리지입니다. ESP32는 iPhone과 직접 BLE로 페어링하고, 사용자가 입력한 Wi-Fi와 MQTT 브로커로 새 알림 이벤트를 게시합니다.
+本项目是一个 ESP32+MQTT 桥接：无需 iOS App 或 Apple 开发者账号，即可在本地网络内把 iOS 通知接入 Home Assistant 自动化。ESP32 与 iPhone 直接 BLE 配对，并把新的通知事件发布到用户填写的 Wi-Fi 与 MQTT broker。
 
-## 요구 사항
+## 要求
 
-- 지원되는 Wi-Fi + BLE ESP32 보드
-- 데스크톱 Chrome 또는 Edge와 USB 데이터 케이블
-- 2.4 GHz Wi-Fi와 MQTT 브로커
-- Home Assistant MQTT integration과 MQTT Discovery
-- iPhone Bluetooth 설정에서 알림 공유 허용
-- 소스 빌드 시 ESP-IDF v6.0.2 with Bluedroid, Python 3.11 이상
+- 支持的 Wi-Fi + BLE ESP32 开发板
+- 桌面版 Chrome 或 Edge 以及 USB 数据线
+- 2.4 GHz Wi-Fi 与 MQTT broker
+- Home Assistant MQTT integration 并开启 MQTT Discovery
+- iPhone 蓝牙设置中允许通知共享
+- 源码构建：ESP-IDF v6.0.2 with Bluedroid、Python 3.11 及以上
 
-## 빠른 설치
+## 快速安装
 
-1. 데스크톱 Chrome 또는 Edge에서 [브라우저 설치 페이지](https://1bobby-git.github.io/HA-iOS-ANCS/)를 열고 ESP32 보드를 USB 데이터 케이블로 연결합니다.
-2. 보드 모델을 선택한 뒤 ESP Web Tools로 factory 이미지를 플래시합니다.
-3. 보드가 만드는 `IOS-ANCS-SETUP-XXXXXX` Wi-Fi에 `ancs-xxxxxx` 비밀번호로 접속합니다.
-4. `http://192.168.4.1` 포털에서 Wi-Fi와 MQTT 설정만 저장합니다. 이 포털은 Home Assistant나 iPhone 알림 설정을 저장하지 않습니다.
-5. `http://192.168.4.1` 설정 포털을 떠나지 않고 **iPhone 기기 등록** 버튼을 눌러 120초 등록 창을 엽니다. Home Assistant의 **iPhone 등록 시작** 버튼과 BOOT 3초 누르기도 같은 등록 창을 엽니다.
-6. 설정 포털에 표시되는 고정 PIN `123456`를 확인한 뒤 iOS Bluetooth 설정에서 장치를 선택하고 코드를 입력합니다. 알림 공유를 허용하고 Home Assistant에서 `최근 알림`과 `앱 이름` 센서가 갱신되는지 확인합니다.
+1. 在桌面版 Chrome 或 Edge 打开 [浏览器安装页面](https://1bobby-git.github.io/HA-iOS-ANCS/)，用 USB 数据线连接 ESP32 开发板。
+2. 选择板子型号，用 ESP Web Tools 刷入 factory 镜像。
+3. 连接开发板发出的 `IOS-ANCS-SETUP-XXXXXX` Wi-Fi，密码 `ancs-xxxxxx`。
+4. 在 `http://192.168.4.1` 门户中只保存 Wi-Fi 与 MQTT 设置。该门户不保存 Home Assistant 或 iPhone 通知设置。
+5. 不离开 `http://192.168.4.1` 设置门户，点击 **注册 iPhone 设备** 打开 120 秒注册窗口。Home Assistant 的 **开始 iPhone 注册** 按钮和长按 BOOT 3 秒也能打开同一个注册窗口。
+6. 查看设置门户显示的正确固定 PIN `123456`，在 iOS 蓝牙设置中选择设备并输入该码，允许通知共享；确认 Home Assistant 中 `最近通知` 和 `App 名称` 传感器已更新。
 
-`XXXXXX`는 보드의 기본 Wi-Fi MAC 주소의 마지막 6자리 16진수입니다. SSID에는 대문자를 사용하고, 비밀번호에는 같은 값을 소문자로 사용합니다. 일반 형식은 `ancs-<lowercase_suffix>`이며 예시는 모델 번호가 아닙니다. 인프라 Wi-Fi 비밀번호는 case-sensitive 값으로 그대로 저장됩니다.
+`XXXXXX` 是开发板基础 Wi-Fi MAC 地址的最后 6 位十六进制：SSID 使用大写，密码使用同一后缀的小写。通用形式为 `ancs-<lowercase_suffix>`，示例不是型号编号。基础设施 Wi-Fi 密码按原样保存，区分大小写（case-sensitive）。
 
-BOOT 버튼을 3초 눌러 설정 AP 또는 iPhone 등록 창을 엽니다. 저장된 iPhone 페어링 정보(bond)가 있으면 등록 동작은 새 휴대폰을 허용하지 않고 기존 iPhone 재연결만 요청합니다.
+长按 BOOT 按钮 3 秒可打开设置 AP 或 iPhone 注册窗口。若已存在保存的 iPhone 配对信息（bond），注册动作只会请求重连已知 iPhone，不允许新手机配对。
 
-## Wi-Fi와 MQTT 설정
+## Wi-Fi 与 MQTT 设置
 
-설정 AP와 `http://192.168.4.1` 포털은 Wi-Fi와 MQTT 설정만 저장합니다. `IOS-ANCS-SETUP-XXXXXX`의 `XXXXXX`는 기본 Wi-Fi MAC 주소의 마지막 6자리이며, SSID에는 대문자, `ancs-xxxxxx` 또는 일반 형식 `ancs-<lowercase_suffix>` 비밀번호에는 소문자를 사용합니다. Home Assistant 장치는 MQTT Discovery로 생성됩니다.
+设置 AP 和 `http://192.168.4.1` 门户只保存 Wi-Fi 与 MQTT 设置。`IOS-ANCS-SETUP-XXXXXX` 的 `XXXXXX` 是基础 Wi-Fi MAC 地址最后 6 位：SSID 用大写，`ancs-xxxxxx`（通用形式 `ancs-<lowercase_suffix>`）密码用小写。Home Assistant 设备由 MQTT Discovery 创建。
 
-펌웨어 0.4.0부터 MQTT 서버에 한 번 연결된 설정은 기억해 둡니다.
+从固件 0.4.0 起，MQTT 服务器一旦连接成功，设置就会被记住。
 
-- 그 뒤 브로커가 꺼지거나 재시작하거나 네트워크가 끊기면 설정 AP를 열지 않고 5초, 15초, 30초, 이후 60초 간격으로 계속 다시 연결합니다.
-- 브로커가 응답하면서 저장된 설정(아이디·비밀번호·권한·Client ID)을 10분 동안 계속 거부할 때만 설정을 고칠 수 있도록 설정 AP를 엽니다. 그사이 브로커가 응답하지 않은 적이 있으면 10분을 처음부터 다시 셉니다.
-- 한 번도 연결된 적이 없는 설정(첫 설치, 오타)은 지금처럼 연결에 실패하면 설정 AP가 열립니다. 고칠 때 비밀번호 칸을 비워 두면 저장된 값이 그대로 쓰입니다.
-- 잘 쓰던 MQTT 서버의 주소, 포트, 인증서(CA)를 바꿔야 하면 BOOT 버튼을 3초 눌러 설정 포털을 여세요. 인증서가 맞지 않아 실패하는 연결도 재시도만 합니다.
-- 연결된 적이 있는 서버의 주소나 포트를 바꿀 때는 MQTT 비밀번호를 다시 입력해야 합니다.
-- 0.3.9에서 업데이트한 기기는 0.4.0에서 MQTT에 처음 연결된 뒤부터 이 규칙이 적용됩니다.
+- 之后 broker 停机、重启或网络中断时不会打开设置 AP，而是按 5 秒、15 秒、30 秒、此后每 60 秒持续重连。
+- 只有当 broker 有响应且连续 10 分钟拒绝已保存的设置（账号、密码、权限、Client ID）时，才会打开设置 AP 供你修改；期间 broker 一旦无响应，10 分钟重新计时。
+- 从未连接成功的设置（首次安装、拼写错误）仍按原逻辑：连接失败即打开设置 AP；修改时清空密码框会沿用已保存的密码。
+- 需要更换正常使用的 MQTT 服务器地址、端口或 CA 证书时，长按 BOOT 3 秒打开设置门户。因证书不匹配而失败的连接同样只做重试。
+- 更改曾成功连接过的 MQTT 服务器地址或端口时，必须重新输入 MQTT 密码。
+- 从 0.3.9 升级的设备在 0.4.0 上首次 MQTT 连接成功后开始适用上述规则。
 
-## iPhone 등록
+## iPhone 注册
 
-설정 포털의 **iPhone 기기 등록** 버튼, Home Assistant의 **iPhone 등록 시작** 버튼 또는 BOOT 버튼 3초 누르기로 120초 등록 창을 엽니다. 설정 포털에 표시되는 고정 PIN `123456`를 iOS Bluetooth 설정에 입력하고 알림 공유를 허용합니다. 저장된 기존 iPhone 페어링 정보가 있으면 같은 동작은 기존 iPhone 재연결만 요청합니다.
+通过设置门户的 **注册 iPhone 设备** 按钮、Home Assistant 的 **开始 iPhone 注册** 按钮或长按 BOOT 3 秒打开 120 秒注册窗口。在 iOS 蓝牙设置中输入设置门户显示的正确固定 PIN `123456`，并允许通知共享。若已有保存的 iPhone 配对信息，同样的动作只会请求重连已注册的 iPhone。
 
-## 지원 보드와 v0.4.0 빌드 사실
+## 支持板型与 v0.4.0 构建事实
 
-공통 펌웨어는 최소 4 MB 플래시 레이아웃을 사용합니다. ESP32-S2는 BLE가 없고, ESP32-H2는 Wi-Fi가 없으며, ESP32-P4는 내장 Wi-Fi/BLE 라디오가 없어 제외됩니다.
+通用固件使用最小 4 MB 闪存布局。ESP32-S2 无 BLE、ESP32-H2 无 Wi-Fi、ESP32-P4 无内置 Wi-Fi/BLE 射频，因此不在支持之列。
 
-| Target | 일반 모듈/보드 | Factory 이미지 | v0.4.0 상태 |
+| Target | 常见模块/板型 | Factory 镜像 | v0.4.0 状态 |
 | --- | --- | ---: | --- |
-| `esp32` | ESP32-WROOM-32 / WROOM-D32 | 1,451,936 bytes | 빌드 검증 · 이 버전 실기기 미검증 |
-| `esp32c2` | ESP32-C2 | 1,474,224 bytes | 빌드 검증 · 이 버전 실기기 미검증 |
-| `esp32c3` | ESP32-C3 | 1,663,232 bytes | 빌드 검증 · 이 버전 실기기 미검증 |
-| `esp32c5` | ESP32-C5 | 1,808,480 bytes | 빌드 검증 · 이 버전 실기기 미검증 |
-| `esp32c6` | ESP32-C6 | 1,809,136 bytes | 빌드 검증 · 이 버전 실기기 미검증 |
-| `esp32c61` | ESP32-C61 | 1,751,520 bytes | 빌드 검증 · 이 버전 실기기 미검증 |
-| `esp32s3` | ESP32-S3 | 1,434,416 bytes | 빌드 검증 · 이 버전 실기기 미검증 |
+| `esp32` | ESP32-WROOM-32 / WROOM-D32 | 1,451,936 bytes | 构建已验证 · 本版本未实机验证 |
+| `esp32c2` | ESP32-C2 | 1,474,224 bytes | 构建已验证 · 本版本未实机验证 |
+| `esp32c3` | ESP32-C3 | 1,663,232 bytes | 构建已验证 · 本版本未实机验证 |
+| `esp32c5` | ESP32-C5 | 1,808,480 bytes | 构建已验证 · 本版本未实机验证 |
+| `esp32c6` | ESP32-C6 | 1,809,136 bytes | 构建已验证 · 本版本未实机验证 |
+| `esp32c61` | ESP32-C61 | 1,751,520 bytes | 构建已验证 · 本版本未实机验证 |
+| `esp32s3` | ESP32-S3 | 1,434,416 bytes | 构建已验证 · 本版本未实机验证 |
 
-표의 상태는 공개된 v0.4.0 이미지 기준입니다. 빌드 검증, 실제 보드 플래시, BLE 등록, iPhone 알림 수신은 서로 다른 검증 범위이며 보드별 실기기 결과가 없는 항목은 빌드 검증으로만 표시합니다.
+表中状态基于公开的 v0.4.0 镜像。构建验证、实机刷写、BLE 注册、iPhone 通知接收是不同层级的验证；没有实机结果的板型只标注构建已验证。
 
-## Home Assistant와 HACS
+## Home Assistant 与 HACS
 
-MQTT Discovery는 HACS 없이 동작합니다. 장치가 MQTT 브로커에 연결되면 retained Discovery 설정을 게시하고 Home Assistant가 장치, `최근 알림`, `앱 이름`, 상태 센서, `iPhone 등록 시작` 버튼을 생성합니다.
+MQTT Discovery 无需 HACS 即可工作。设备连上 MQTT broker 后会发布 retained Discovery 配置，Home Assistant 随即创建设备、`最近通知`、`App 名称`、状态传感器和 `开始 iPhone 注册` 按钮。
 
-HACS는 Home Assistant 동반 통합만 설치합니다. ESP32 펌웨어를 설치하거나 업데이트하지 않습니다. HACS custom repository 설치는 [iOS ANCS HACS My Link](https://my.home-assistant.io/redirect/hacs_repository/?owner=1bobby-git&repository=HA-iOS-ANCS&category=integration)를 열고 Home Assistant에서 저장소 추가를 확인합니다. 통합 표시 이름은 `iOS ANCS`이며 기존 HACS 설치 호환성을 위해 저장소 이름과 URL은 `HA-iOS-ANCS`를 그대로 사용합니다. 이 문서는 custom repository 경로만 설명하며, HACS 기본 스토어 등록을 주장하지 않습니다.
+HACS 只安装 Home Assistant 伴侣集成，不会安装或更新 ESP32 固件。HACS custom repository 安装：打开 [iOS ANCS HACS My Link](https://my.home-assistant.io/redirect/hacs_repository/?owner=1bobby-git&repository=HA-iOS-ANCS&category=integration)，在 Home Assistant 中确认添加仓库。集成显示名为 `iOS ANCS`；为兼容既有 HACS 安装，仓库名称和 URL 保持 `HA-iOS-ANCS` 不变。本文只描述 custom repository 路径，不声称已注册进 HACS 官方商店。
 
-### HACS 설치
+### HACS 安装
 
-아래 버튼을 누르면 Home Assistant의 HACS 커스텀 저장소 추가 화면으로 이동합니다.
+按下下方按钮将打开 Home Assistant 的 HACS 自定义仓库添加页面。
 
-[![Home Assistant에서 HACS 저장소 열기](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=1bobby-git&repository=HA-iOS-ANCS&category=integration)
+[![在 Home Assistant 中打开 HACS 仓库](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=1bobby-git&repository=HA-iOS-ANCS&category=integration)
 
-버튼을 사용할 수 없으면 다음 순서로 설치합니다.
+无法使用按钮时按以下步骤安装。
 
-1. Home Assistant에서 `HACS` → `Integrations`를 엽니다.
-2. 우측 상단 `⋮` 메뉴에서 `Custom repositories`를 선택합니다.
-3. `Repository`에 `https://github.com/1bobby-git/HA-iOS-ANCS`를 입력합니다.
-4. `Category`에서 `Integration`을 선택하고 `Add`를 누릅니다.
-5. `iOS ANCS`를 설치한 뒤 Home Assistant를 재시작합니다.
+1. 在 Home Assistant 打开 `HACS` → `Integrations`。
+2. 在右上角 `⋮` 菜单选择 `Custom repositories`。
+3. 在 `Repository` 填入 `https://github.com/1bobby-git/HA-iOS-ANCS`。
+4. 在 `Category` 中选择 `Integration`，然后点击 `Add`。
+5. 安装 `iOS ANCS` 后重启 Home Assistant。
 
-HACS 통합을 추가할 때 MQTT 기본 토픽을 입력하지 않습니다. 통합은 MQTT Discovery가 이미 등록한 `최근 알림` 센서를 읽기 전용 알림 소스로 사용합니다. 호환 소스 기기가 하나면 자동으로 선택하고, 둘 이상이면 기기 이름 선택 목록을 표시합니다.
+添加 HACS 集成时不会要求输入 MQTT 基础主题。集成把 MQTT Discovery 已注册的 `最近通知` 传感器作为只读通知来源。只有一台兼容源设备时会自动选择，多台时按设备名称显示选择列表。
 
-`알림` 이벤트 엔티티와 상세 엔티티는 MQTT 장치와 분리된 별도 `iOS ANCS (...)` 장치에 등록됩니다. MQTT 장치를 `via_device`로 연결하지 않으며 같은 물리 장치를 나타내더라도 두 통합의 기기와 엔티티는 독립적으로 유지됩니다. 통합은 마지막 완전한 알림을 전용 저장소에 보관하므로 MQTT 알림이 retained가 아니어도 Home Assistant 재시작 뒤 상세 센서가 복원됩니다. 이벤트 엔티티는 새 알림만 표시하며 저장된 세부정보를 새 이벤트로 재생하지 않습니다. 기존 수동 토픽 항목은 통합의 **재구성**에서 MQTT 소스 장치를 선택하면 엔티티 ID와 기록을 보존한 채 별도 iOS ANCS 장치로 이동합니다.
+`通知` 事件实体和详情实体会注册到与 MQTT 设备分离的独立 `iOS ANCS (...)` 设备上。不会通过 `via_device` 关联 MQTT 设备，即使指向同一物理设备，两个集成的设备与实体也保持独立。集成会把最后一条完整通知存入专用存储，因此即使 MQTT 通知不是 retained，重启 Home Assistant 后详情传感器也会恢复。事件实体只显示新通知，不会把已保存的详情重放为新事件。既有的手动主题条目可在集成的 **重新配置** 中选择 MQTT 源设备，在保留实体 ID 和历史记录的前提下迁移到独立的 iOS ANCS 设备。
 
-동반 통합은 기존 MQTT Discovery 엔터티를 변경하거나 비활성화하지 않습니다. 별도 iOS ANCS 장치에 알림 이벤트, 목적별 센서 23개와 엄격한 바이너리 센서 12개, 진단용 `원본 알림` 센서를 추가합니다. 별도 `iOS ANCS (...)` 장치에는 진단용 BLE 연결 바이너리 센서도 표시됩니다. 이 상태는 Home Assistant에 이미 등록된 MQTT Discovery 장치 상태 엔티티를 통해 파생되며, MQTT 장치와 엔티티는 분리된 상태로 활성화되고 변경되지 않습니다. 이 HACS 업데이트에는 ESP32 펌웨어 재플래시가 필요하지 않습니다. 텍스트 센서 상태는 최대 255자로 제한되며 긴 값은 `full_value` 속성에, 전체 원본 JSON은 속성에 유지됩니다. 알림 제목과 내용 같은 개인정보는 Home Assistant Recorder에 기록될 수 있으므로 기록이 필요하지 않으면 해당 엔터티를 Recorder에서 제외하세요. 진단 엔티티 `연결 복구 상태`와 `알림 수신 준비`는 1분마다 바뀌는 가동 시간·알림 카운터·재시도 대기 시간 속성을 Recorder에 기록하지 않습니다. 현재 값은 그대로 보이며, 같은 값의 기록은 MQTT 장치 상태 엔티티에 남습니다. 상태 기록은 1분마다 짧은 한 줄씩 계속 남으므로, 이것도 원하지 않으면 두 엔티티를 Recorder에서 제외하세요.
+伴侣集成不会修改或禁用 MQTT Discovery 实体。独立 iOS ANCS 设备上的通知事件、23 个专用传感器和 12 个严格二进制传感器，以及诊断用 `原始通知` 传感器。独立 `iOS ANCS (...)` 设备上还有诊断用 BLE 连接二进制传感器，经由 Home Assistant 中已注册的 MQTT Discovery 设备状态实体派生；MQTT 设备与实体保持分离、启用且不被修改。本次 HACS 更新无需重新刷写 ESP32 固件。文本传感器状态最长 255 字符，超长值保留在 `full_value` 属性，完整原始 JSON 保留在属性中。通知标题和内容等隐私数据可能被 Home Assistant Recorder 记录，不需要记录时请把对应实体从 Recorder 排除（已从 Recorder 排除的实体不受影响）。诊断实体 `连接恢复状态` 和 `通知就绪` 不会把每分钟变化的运行时长、通知计数、重试等待等属性写入 Recorder；当前值照常显示，同值的记录保留在 MQTT 设备状态实体上。状态记录每分钟仍会新增一行短记录，如也不需要，请把这两个实体一并从 Recorder 排除。
 
-MQTT Discovery의 compact model은 `최근 알림`, `알림 제목`, `알림 내용`, `앱 이름`, `장치 상태`, `장치 재시작` 엔티티를 중심으로 구성됩니다. 상태 속성에는 `ready`, `uptime_seconds`, `ble_connected`, `wifi_ssid` 같은 진단 값이 포함됩니다.
+MQTT Discovery 的 compact model 围绕 `最近通知`（Recent notification）、`通知标题`（Notification title）、`通知内容`（Notification message）、`App 名称`（App name）、`设备状态`（Device status）和 `设备重启`（Device restart）实体组织。状态属性包含 `ready`、`uptime_seconds`、`ble_connected`、`wifi_ssid` 等诊断值。
 
-예제 자동화:
+示例自动化：
 
 ```text
 homeassistant/automation_ios_ancs_c6_relay.yaml
@@ -123,37 +123,37 @@ homeassistant/automation_ios_ancs_parking_arrival_tts.yaml
 homeassistant/automation_ios_ancs_baemin_delivery_tts.yaml
 ```
 
-사용 전에 `sensor.replace_with_your_last_notification_entity`를 본인 Home Assistant의 last-notification sensor로, `notify.replace_with_your_mobile_app_service`를 본인 mobile app notify 서비스로 바꾸세요. 예제는 새 `relay_id` 상태 변화만 전달하고, `complete=false`, `pre_existing=true`, `unknown`, `unavailable`, availability 복구 전환은 전달하지 않습니다.
+使用前请把 `sensor.replace_with_your_last_notification_entity` 换成你 Home Assistant 里的 last-notification sensor，把 `notify.replace_with_your_mobile_app_service` 换成你的 mobile app notify 服务。示例只转发新的 `relay_id` 状态变化，不转发 `complete=false`、`pre_existing=true`、`unknown`、`unavailable` 以及 availability 恢复跳变。
 
-알림 JSON은 원본 `app_id`를 보존하고 표시용 `app_name`을 추가합니다. 펌웨어는 iPhone이 ANCS로 제공한 현지화된 Display Name을 우선 사용합니다. 앱의 첫 알림은 이름 조회 때문에 한 번의 추가 ANCS 요청이 필요할 수 있고, 같은 연결 세션의 다음 알림부터는 제한된 세션 캐시를 사용합니다. 조회가 실패해도 알림 세부정보는 버리지 않고 기존 정적 매핑과 원본 앱 ID 순서로 폴백합니다. 대표 폴백 매핑은 [App ID Reference](docs/APP_ID_REFERENCE.md)에 있습니다.
+通知 JSON 会保留原始 `app_id` 并补充展示用 `app_name`。固件优先使用 iPhone 通过 ANCS 提供的本地化 Display Name；某个 App 的首条通知可能因名称查询多一次 ANCS 请求，同一连接会话的后续通知使用有限的会话缓存。即使查询失败也不丢弃通知详情，按现有静态映射、原始 App ID 的顺序回退。代表性回退映射见 [App ID Reference](docs/APP_ID_REFERENCE.md)。
 
-## 문제 해결
+## 问题排查
 
-- 설치 버튼이 보이지 않거나 실패하면 데스크톱 Chrome/Edge, USB 데이터 케이블, OS serial 권한을 확인합니다. iPhone/iPad 브라우저는 USB 플래시를 할 수 없습니다.
-- `IOS-ANCS-SETUP-XXXXXX`가 보이지 않으면 전원과 플래시 성공 여부를 확인하고 BOOT 버튼을 3초 눌러 복구 창을 엽니다.
-- `http://192.168.4.1`이 열리지 않으면 setup AP에 실제로 연결되어 있는지 확인하고 VPN/모바일 데이터 라우팅을 잠시 끕니다.
-- MQTT가 연결되지 않으면 host, port, TLS CA, username/password, ACL, 중복 Client ID를 확인합니다.
-- iPhone에 장치가 보이지 않으면 `iPhone 등록 시작` 또는 BOOT 3초로 120초 등록 창을 다시 엽니다.
-- PIN 요청에는 `설정 포털에 등록 시간 동안 표시되는 고정 PIN `123456``을 입력하고, iOS 알림 공유 요청을 허용합니다.
-- Home Assistant 엔티티가 없으면 MQTT integration, Discovery 활성화, retained config, `<base>/state`를 확인합니다.
+- 安装按钮不显示或失败：检查桌面版 Chrome/Edge、USB 数据线、操作系统串口权限。iPhone/iPad 浏览器无法进行 USB 刷写。
+- 看不到 `IOS-ANCS-SETUP-XXXXXX`：确认供电与刷写是否成功，长按 BOOT 3 秒打开恢复窗口。
+- 打不开 `http://192.168.4.1`：确认确实连在 setup AP 上，并暂时关闭 VPN/蜂窝数据路由。
+- MQTT 连不上：检查 host、port、TLS CA、用户名/密码、ACL、重复的 Client ID。
+- iPhone 搜不到设备：用 `开始 iPhone 注册` 或 BOOT 3 秒重新打开 120 秒注册窗口。
+- 要求输入 PIN：输入 `设置门户在注册期间显示的固定 PIN 123456`，并允许 iOS 的通知共享请求。
+- Home Assistant 没有实体：检查 MQTT integration、Discovery 是否启用、retained config、`<base>/state`。
 
-더 자세한 절차는 [iOS Pairing Guide](docs/IOS_PAIRING.md)와 [Troubleshooting](docs/TROUBLESHOOTING.md)를 참고하세요.
+更详细的流程见 [iOS Pairing Guide](docs/IOS_PAIRING.md) 和 [Troubleshooting](docs/TROUBLESHOOTING.md)。
 
-## 개인정보와 보안
+## 隐私与安全
 
-- iOS 앱, Apple 계정, iCloud credential을 사용하지 않습니다.
-- Wi-Fi password, MQTT password, TLS CA 본문은 상태 API, Discovery, retained state, 보고서에 평문으로 노출하지 않습니다.
-- 빈 secret 입력은 저장된 기존 값을 보존합니다. 단, 연결된 적이 있는 MQTT 서버의 주소나 포트를 바꾸면 저장된 MQTT 비밀번호를 새 서버로 보내지 않으므로 다시 입력해야 합니다. 이 보호는 주소와 포트만 봅니다. TLS를 끈 MQTT에서는 설정 포털에 들어온 사람이 Wi-Fi를 자기 네트워크로 바꾸고 같은 브로커 주소로 응답하면 비밀번호를 받을 수 있으므로, 비밀번호를 지키려면 TLS와 CA 인증서를 쓰세요.
-- iOS 알림 제목, 본문, 앱 이름, 앱 ID는 MQTT 브로커와 Home Assistant에 게시될 수 있으므로 broker 접근 권한을 제한하세요.
-- Home Assistant에서 iOS ANCS 통합 항목을 삭제하면 통합이 저장해 둔 마지막 알림도 함께 지웁니다. 0.6.13 이하에서 삭제한 항목의 파일은 활성화된 통합 항목이 하나라도 있으면 다음 시작 때, 또는 항목을 추가하거나 활성화할 때 지웁니다. 활성화된 항목이 없으면 `.storage/ha_ios_ancs.*.last_notification` 파일을 직접 지우세요.
-- 고정 PIN `123456`은 로컬 등록 창에서만 사용하고, 기기를 양도하기 전에는 전체 erase와 새 등록을 수행하세요.
+- 不使用 iOS App、Apple 账号或 iCloud credential。
+- Wi-Fi password、MQTT password、TLS CA 正文不会以明文出现在状态 API、Discovery、retained state 和诊断报告中。
+- 留空 secret 输入框会保留已保存的值。但更改曾成功连接过的 MQTT 服务器地址或端口时，已保存的 MQTT 密码不会发往新服务器，必须重新输入。该保护只看地址与端口：在使用明文 MQTT（未开 TLS）时，能进入设置门户的人可以把 Wi-Fi 切到自己的网络并用同一 broker 地址应答来截取密码；要保护密码请使用 TLS 和 CA 证书。
+- iOS 通知的标题、正文、App 名称、App ID 会发布到 MQTT broker 和 Home Assistant，请限制 broker 访问权限。
+- 在 Home Assistant 中删除 iOS ANCS 集成条目时，集成保存的最后一条通知也会一并删除。0.6.13 及更早版本删除条目后，只要还有启用的集成条目，其文件会在下次启动或添加/启用条目时清除；若没有启用中的条目，请手动删除 `.storage/ha_ios_ancs.*.last_notification` 文件。
+- 固定 PIN `123456` 仅用于本地注册窗口；转赠设备前请先整机 erase 并重新注册。
 
-## 개발자 참고
+## 开发者参考
 
 ```powershell
 python -m pip install -r tools/requirements.txt
 python -m pytest tools/tests -q
-# Home Assistant 테스트(requirements_test.txt)는 Python 3.14.2 이상이 필요합니다.
+# Home Assistant 测试（requirements_test.txt）需要 Python 3.14.2 及以上。
 python -m pip install -r requirements_test.txt
 python -m pytest tests -q
 .\tools\build.ps1 -Target esp32c6
@@ -166,17 +166,17 @@ python -m pytest tests -q
 ./tools/flash.sh /dev/ttyACM0
 ```
 
-`COMx`와 `/dev/ttyACM0`는 일반 예시입니다. 실제 보드, target, serial port에 맞게 바꾸세요. MQTT relay 검증은 `python tools/verify_mqtt_relay.py ...`, serial ANCS capture는 `python tools/verify_capture.py --port COMx ...`를 사용합니다.
+`COMx` 和 `/dev/ttyACM0` 是通用示例，请按实际板子、target、串口替换。MQTT relay 验证用 `python tools/verify_mqtt_relay.py ...`，串口 ANCS 抓取用 `python tools/verify_capture.py --port COMx ...`。
 
 
-### 차량 입차 TTS 자동화 조건
+### 车辆入场 TTS 自动化条件
 
-`automation_ios_ancs_parking_arrival_tts.yaml`은 `app_id`와 `app_name`이 사용자가 지정한 아파트 앱과 **모두 정확히 일치**하고, 새 알림 본문에 한국 차량번호와 `차량이 입차` 문구가 있을 때만 실행됩니다. 예제의 `target_app_id`, `target_app_name`, 이벤트 엔티티, TTS 엔티티와 스피커 엔티티를 실제 값으로 바꾸세요.
+`automation_ios_ancs_parking_arrival_tts.yaml` 要求 `app_id` 和 `app_name` 与用户指定的公寓 App **全部精确匹配**，且新通知正文包含韩国车牌号和 `차량이 입차`（车辆入场）字样才会执行。请把示例中的 `target_app_id`、`target_app_name`、事件实体、TTS 实体和扬声器实体替换为实际值。
 
-### 배달의민족 도착·배달완료 TTS 조건
+### 外卖平台（Baedal Minjok）送达 TTS 条件
 
-`automation_ios_ancs_baemin_delivery_tts.yaml`은 iOS 앱 ID `com.jawebs.baedal`과 앱 이름 `배달의민족`이 모두 정확히 일치하는 완전한 신규 알림만 처리합니다. 제목이 `곧 도착합니다!`이면 라이더 도착 준비 안내를, `문앞으로 배달이 완료되었습니다.`이면 문앞 보관 및 빠른 수령 안내를 방송하며 쿠폰·광고 알림은 무시합니다. 이벤트 엔티티, TTS 엔티티와 스피커 엔티티를 실제 Home Assistant 값으로 교체하세요.
+`automation_ios_ancs_baemin_delivery_tts.yaml` 只处理 iOS App ID `com.jawebs.baedal` 与 App 名称 `배달의민족` 均精确匹配的完整新通知：标题为 `곧 도착합니다!` 时播报骑手即将到达，标题为 `문앞으로 배달이 완료되었습니다.` 时播报门口放置与尽快取件，忽略优惠券和广告通知。请把事件实体、TTS 实体和扬声器实体替换为你的 Home Assistant 实际值。
 
-## 변경 이력
+## 变更记录
 
-버전별 변경 사항, 검증 범위와 펌웨어 포함 여부는 [CHANGELOG.md](CHANGELOG.md)와 [GitHub Releases](https://github.com/1bobby-git/HA-iOS-ANCS/releases)에 있습니다.
+各版本的变更内容、验证范围以及是否包含固件，见 [CHANGELOG.md](CHANGELOG.md) 和 [GitHub Releases](https://github.com/1bobby-git/HA-iOS-ANCS/releases)。
