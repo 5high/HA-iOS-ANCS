@@ -164,7 +164,8 @@ esp_err_t provision_config_merge_preserving_secrets_ex(
         }
     }
 
-    return provision_config_validate(out) == PROVISION_CONFIG_OK ? ESP_OK : ESP_ERR_INVALID_ARG;
+    const provision_config_result_t validation = provision_config_validate(out);
+    return validation == PROVISION_CONFIG_OK ? ESP_OK : (esp_err_t)validation;
 }
 
 esp_err_t provision_config_merge_preserving_secrets(

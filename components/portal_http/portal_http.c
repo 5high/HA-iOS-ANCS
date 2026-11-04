@@ -664,10 +664,33 @@ static esp_err_t handle_config_post(httpd_req_t *req)
         }
     }
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "config save failed: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "config save failed: 0x%x", (unsigned)err);
+        const char *reason = "save_failed";
+        switch ((provision_config_result_t)err) {
+        case PROVISION_CONFIG_TLS_CA_REQUIRED:
+            reason = "tls_ca_required";
+            break;
+        case PROVISION_CONFIG_MISSING_WIFI:
+            reason = "missing_wifi_ssid";
+            break;
+        case PROVISION_CONFIG_MISSING_MQTT_HOST:
+            reason = "missing_mqtt_host";
+            break;
+        case PROVISION_CONFIG_INVALID_MQTT_PORT:
+            reason = "invalid_mqtt_port";
+            break;
+        case PROVISION_CONFIG_MISSING_MQTT_CLIENT_ID:
+            reason = "missing_mqtt_client_id";
+            break;
+        case PROVISION_CONFIG_MISSING_MQTT_BASE_TOPIC:
+            reason = "missing_mqtt_base_topic";
+            break;
+        default:
+            break;
+        }
         free(update);
         free(existing);
-        return send_error_json(req, "500 Internal Server Error", "save failed");
+        return send_error_json(req, "500 Internal Server Error", reason);
     }
 
     err = s_handlers.reconnect(update, s_handlers.context);
