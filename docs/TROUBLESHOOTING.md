@@ -14,8 +14,8 @@ Developer examples use `COMx` on Windows and `/dev/ttyACM0` on Linux. Replace th
 
 ## Setup AP Is Missing
 
-- Expected SSID: `IOS-ANCS-SETUP-XXXXXX`.
-- Expected password: `ancs-xxxxxx`.
+- Expected SSID: `iOS-MSG-XXXXXX`.
+- Expected password: `iosmsg-xxxxxx`.
 - `XXXXXX` is the last six hexadecimal digits of the base Wi-Fi MAC address, uppercase in the SSID and lowercase in the password. The generic form is `ancs-<lowercase_suffix>`, and it is not a model number.
 - Infrastructure Wi-Fi passwords are case-sensitive and stored exactly as entered.
 - Verify the board is powered and the flash completed.
@@ -25,7 +25,7 @@ The setup AP can close after Wi-Fi, MQTT, and an existing BLE bond are all ready
 
 ## Portal Does Not Open
 
-- Join `IOS-ANCS-SETUP-XXXXXX` first.
+- Join `iOS-MSG-XXXXXX` first.
 - Browse directly to `http://192.168.4.1`.
 - Temporarily disable VPN, mobile-data routing, or another active Wi-Fi route if the browser goes elsewhere.
 
@@ -56,7 +56,7 @@ Moving settings that connected before to a broker that takes a username without 
 
 - Open the 120-second enrollment window with setup-portal **Enroll iPhone**, Home Assistant **Start iPhone enrollment**, or BOOT for 3 seconds.
 - Keep the setup portal open and pair from iOS **Settings > Bluetooth**.
-- Enter the fixed PIN `123456` displayed in the setup portal.
+- Enter the fixed PIN `654321` displayed in the setup portal.
 - Allow notification sharing when prompted.
 
 If pairing information already exists, enrollment requests reconnect to the stored iPhone only. Use confirmed Replace enrollment only when intentionally deleting the current iPhone pairing information.

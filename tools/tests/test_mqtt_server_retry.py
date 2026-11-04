@@ -419,6 +419,22 @@ int main(void)
     assert(provision_config_merge_preserving_secrets(&stored, &update, &update) == ESP_OK);
     assert(strcmp(update.mqtt_password, "mqtt-secret") == 0);
 
+    /* A stored CA survives a blank CA field while TLS stays enabled, and an
+     * explicit clear flag (or turning TLS off) wipes it. */
+    provision_config_t with_ca = base();
+    with_ca.mqtt_tls = true;
+    strcpy(with_ca.mqtt_ca, "-----BEGIN CERTIFICATE-----old");
+    provision_config_t blank_ca = base();
+    blank_ca.mqtt_tls = true;
+    assert(provision_config_merge_preserving_secrets(&with_ca, &blank_ca, &merged) == ESP_OK);
+    assert(strcmp(merged.mqtt_ca, "-----BEGIN CERTIFICATE-----old") == 0);
+    assert(provision_config_merge_preserving_secrets_ex(&with_ca, &blank_ca, true, &merged)
+           == ESP_OK); /* Clearing the CA falls back to the built-in bundle. */
+    assert(merged.mqtt_ca[0] == '\0');
+    blank_ca.mqtt_tls = false;
+    assert(provision_config_merge_preserving_secrets(&with_ca, &blank_ca, &merged) == ESP_OK);
+    assert(merged.mqtt_ca[0] == '\0');
+
     /* The verified marker round-trips and is erased with the settings. */
     uint32_t marker = 1;
     assert(provision_store_load_mqtt_verified(&marker) == ESP_ERR_NVS_NOT_FOUND);
@@ -530,7 +546,7 @@ def test_portal_requires_the_mqtt_password_for_a_new_server():
     verified = _section(portal, "static bool stored_mqtt_settings_verified", "static esp_err_t handle_config_post")
 
     rule = handler.index("provision_config_mqtt_password_rule(")
-    merge = handler.index("provision_config_merge_preserving_secrets(existing, update, update)")
+    merge = handler.index("provision_config_merge_preserving_secrets_ex(existing, update, clear_mqtt_ca,")
     drop = handler.index("password_rule == PROVISION_MQTT_PASSWORD_DROP")
     assert rule < merge < drop
     assert "stored_mqtt_settings_verified(existing)" in handler

@@ -1,5 +1,11 @@
 #include "mqtt_relay.h"
 
+#include "sdkconfig.h"
+
+#if CONFIG_MBEDTLS_CERTIFICATE_BUNDLE
+#include "esp_crt_bundle.h"
+#endif
+
 #include <ctype.h>
 #include <inttypes.h>
 #include <stdlib.h>
@@ -720,9 +726,6 @@ esp_err_t mqtt_relay_build_client_config(const provision_config_t *config,
         return ESP_ERR_INVALID_ARG;
     }
     const provision_config_result_t validation = provision_config_validate(config);
-    if (validation == PROVISION_CONFIG_TLS_CA_REQUIRED) {
-        return ESP_ERR_INVALID_ARG;
-    }
     if (validation != PROVISION_CONFIG_OK || topic_has_publish_wildcard(availability_topic)) {
         return ESP_ERR_INVALID_ARG;
     }
@@ -744,7 +747,18 @@ esp_err_t mqtt_relay_build_client_config(const provision_config_t *config,
         .session.last_will.qos = 1,
         .session.last_will.retain = true,
     };
+#if CONFIG_MBEDTLS_CERTIFICATE_BUNDLE
+    /* Public brokers (Let's Encrypt/ZeroSSL/... chains) verify against the
+     * root bundle baked into the firmware; a stored CA still wins. */
+    const bool use_built_in_bundle =
+        config->mqtt_tls && config->mqtt_ca[0] == '\0';
+#endif
     *out = mqtt_config;
+#if CONFIG_MBEDTLS_CERTIFICATE_BUNDLE
+    if (use_built_in_bundle) {
+        out->broker.verification.crt_bundle_attach = esp_crt_bundle_attach;
+    }
+#endif
     return ESP_OK;
 }
 

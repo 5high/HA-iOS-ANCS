@@ -8,6 +8,12 @@ const PORTAL_LANG = (typeof navigator === 'undefined' ||
   String(navigator.language || '').toLowerCase().startsWith('zh')) ? 'zh' : 'en';
 
 const PORTAL_EN = {
+  "Base topic 格式不正确：用 / 分隔的多段路径，每段不能为空，不能以 / 开头或结尾，不能使用 + 或 #。例如 u/marcozy@163.com/ancs。": 'Invalid base topic: a slash-separated path where no segment is empty, it does not start or end with /, and + or # are not allowed. Example: u/marcozy@163.com/ancs.',
+  "Client ID 只能包含字母、数字、下划线 _ 和连字符 -（Home Assistant Discovery 要求）。": 'The client ID may only contain letters, digits, underscores _ and hyphens - (required by Home Assistant Discovery).',
+  "CA 证书校验未通过。公共 CA（Let\'s Encrypt/ZeroSSL）签发的证书可把「CA 证书 PEM」留空，固件会用内置公共根证书；自签名证书请粘贴对应 CA。": 'CA validation failed. For certificates issued by a public CA (Let\'s Encrypt/ZeroSSL), leave the "CA certificate PEM" field empty and the firmware will use its built-in public root bundle; for self-signed certificates, paste the matching CA.',
+  "此操作只能在设备热点内进行：请连接 Wi-Fi「iOS-MSG-XXXXXX」热点后打开 192.168.4.1 再试。当前是通过局域网地址访问的，出于安全考虑（防止办公室内其他人远程抢绑 iPhone），设备只接受来自自身热点的请求。": 'This action only works over the device hotspot. Connect to the "iOS-MSG-XXXXXX" Wi-Fi, open 192.168.4.1 in your browser, and try again. You are reaching the device via its LAN address, and for security (so nobody else in the office can remotely claim the iPhone pairing) it only accepts requests from its own hotspot.',
+  "保存失败：配置校验未通过，请检查上方各字段格式（Broker 地址、端口、Client ID、Base topic 等）。": 'Save failed: the settings did not pass validation. Check the field formats above (broker address, port, client ID, base topic, etc.).',
+  "已保存 CA 证书。留空并保存 = 保留；清空此栏将改用固件内置公共根证书（适合 Let\'s Encrypt/ZeroSSL 等公共证书），贴入新证书则替换。": 'A CA certificate is stored. Leave blank and save to keep it; clearing the field switches to the firmware built-in public root bundle (for Let\'s Encrypt/ZeroSSL and similar), or paste a new certificate to replace it.',
   "연결된 적이 있는 MQTT 서버의 주소나 포트를 바꾸면 저장된 비밀번호를 새 서버로 보내지 않습니다. MQTT 비밀번호를 다시 입력하세요.": 'When you change the address or port of an MQTT server that connected before, re-enter the MQTT password.',
   "확인 중": 'Checking',
   "iPhone 기기 등록": 'Enroll iPhone',
@@ -57,7 +63,7 @@ const PORTAL_EN = {
   "{} · 고정 PIN {}": '${bluetoothName} · fixed PIN ${blePasskey}',
   "{}을 iPhone Bluetooth 설정에서 선택하세요": 'Select ${bluetoothName} in iPhone Bluetooth settings',
   "등록 신호를 보내고 있습니다. iPhone Bluetooth 설정에서 {}을 선택하고 고정 PIN {}를 입력하세요.": 'Sending the enrollment signal. Select ${bluetoothName} in iPhone Bluetooth settings and enter fixed PIN ${blePasskey}.',
-  "등록 신호를 보내고 있습니다. iPhone Bluetooth 설정에서 {}을 선택하고 고정 PIN 123456을 입력하세요.": 'Sending the enrollment signal. Select ${bluetoothName} in iPhone Bluetooth settings and enter fixed PIN 123456.',
+  "등록 신호를 보내고 있습니다. iPhone Bluetooth 설정에서 {}을 선택하고 고정 PIN 654321을 입력하세요.": 'Sending the enrollment signal. Select ${bluetoothName} in iPhone Bluetooth settings and enter fixed PIN 654321.',
   "등록됨 · 연결 대기": 'Enrolled · waiting to connect',
   "등록된 iPhone을 찾고 있습니다": 'Looking for the enrolled iPhone',
   "등록된 iPhone만 자동으로 다시 연결됩니다. 이 페이지의 버튼으로 재연결 신호를 다시 보낼 수 있습니다.": 'Only the enrolled iPhone reconnects automatically. Use the button on this page to resend the reconnect signal.',
@@ -131,10 +137,20 @@ function setBusy(id, busy, busyLabel) {
   button.textContent = busy ? busyLabel : button.dataset.label;
 }
 
-// Server error keys that need a Korean explanation instead of the raw key.
+// Server error keys that need a friendly explanation instead of the raw key.
 const API_ERROR_MESSAGES = {
   mqtt_password_required:
     t('更改曾成功连接过的 MQTT 服务器地址或端口时，必须重新输入 MQTT 密码。'),
+  save_failed:
+    t('保存失败：配置校验未通过，请检查上方各字段格式（Broker 地址、端口、Client ID、Base topic 等）。'),
+  invalid_mqtt_base_topic:
+    t('Base topic 格式不正确：用 / 分隔的多段路径，每段不能为空，不能以 / 开头或结尾，不能使用 + 或 #。例如 u/marcozy@163.com/ancs。'),
+  invalid_mqtt_client_id:
+    t('Client ID 只能包含字母、数字、下划线 _ 和连字符 -（Home Assistant Discovery 要求）。'),
+  tls_ca_required:
+    t('CA 证书校验未通过。公共 CA（Let\'s Encrypt/ZeroSSL）签发的证书可把「CA 证书 PEM」留空，固件会用内置公共根证书；自签名证书请粘贴对应 CA。'),
+  'AP interface required':
+    t('此操作只能在设备热点内进行：请连接 Wi-Fi「iOS-MSG-XXXXXX」热点后打开 192.168.4.1 再试。当前是通过局域网地址访问的，出于安全考虑（防止办公室内其他人远程抢绑 iPhone），设备只接受来自自身热点的请求。'),
 };
 
 async function api(path, options = {}) {
@@ -159,7 +175,7 @@ function deviceSuffix(apSsid) {
 }
 
 function iphoneBluetoothName(apSsid, deviceFamily) {
-  return `IOS-ANCS-${deviceFamily}-${deviceSuffix(apSsid).toUpperCase()}`;
+  return `iOS-MSG-${deviceSuffix(apSsid).toUpperCase()}`;
 }
 
 function recommendedClientId(apSsid, deviceFamily) {
@@ -304,6 +320,9 @@ function hydrateForm(status, apName, deviceFamily) {
     config.mqtt_client_id || recommendedClientId(apName, deviceFamily);
   $('mqtt-base-topic').value =
     config.mqtt_base_topic || recommendedBaseTopic(apName, deviceFamily);
+  $('mqtt-ca').placeholder = config.mqtt_ca_configured
+    ? t('已保存 CA 证书。留空并保存 = 保留；清空此栏将改用固件内置公共根证书（适合 Let\'s Encrypt/ZeroSSL 等公共证书），贴入新证书则替换。')
+    : '-----BEGIN CERTIFICATE-----';
   formHydrated = true;
 }
 
@@ -313,7 +332,7 @@ function applyStatus(status) {
   const config = status.config || {};
   const target = String(status.target || 'esp32c6').toLowerCase();
   const deviceFamily = String(status.device_family || 'C6').toUpperCase();
-  const apName = runtime.ap_ssid || 'IOS-ANCS-SETUP';
+  const apName = runtime.ap_ssid || 'iOS-MSG';
   const bluetoothName = iphoneBluetoothName(apName, deviceFamily);
   const passkeyValue = Number(system.ble_passkey || 0);
   const blePasskey = Number.isInteger(passkeyValue) &&
@@ -381,7 +400,7 @@ function applyStatus(status) {
     );
     $('ble-guidance').textContent = blePasskey
       ? t(`正在发送注册信号。请在 iPhone 蓝牙设置中选择 ${bluetoothName} 并输入固定 PIN ${blePasskey}。`)
-      : t(`正在发送注册信号。请在 iPhone 蓝牙设置中选择 ${bluetoothName} 并输入固定 PIN 123456。`);
+      : t(`正在发送注册信号。请在 iPhone 蓝牙设置中选择 ${bluetoothName} 并输入固定 PIN 654321。`);
   } else if (system.ble_bonded) {
     updateTile('status-ble', 'pending', t('已注册 · 等待连接'), t('正在寻找已注册的 iPhone'));
     $('ble-guidance').textContent = t('只有已注册的 iPhone 会自动重新连接。你可以用本页按钮重新发送重连信号。');
@@ -427,8 +446,8 @@ function applyStatus(status) {
     ? t('已保存密码。仅在需要修改时重新输入。更改曾成功连接过的服务器地址或端口时必须重新输入。')
     : t('Broker 无密码请留空。');
   $('mqtt-ca-help').textContent = config.mqtt_ca_configured
-    ? t('已保存 CA 证书。仅在需要更换时重新输入。')
-    : t('开启 TLS 需要提供 CA 证书。');
+    ? t('已保存 CA 证书。仅在需要更换时重新输入；清空并保存将改用固件内置公共根证书。')
+    : t('可留空：TLS 默认使用固件内置的公共根证书（Let\'s Encrypt/ZeroSSL 等）。仅自签名证书需要粘贴 CA。');
   toggleTlsField();
 }
 

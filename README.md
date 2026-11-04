@@ -45,10 +45,10 @@ iPhone → BLE ANCS → ESP32 → Wi-Fi/MQTT → Home Assistant
 
 1. 在桌面版 Chrome 或 Edge 打开 [浏览器安装页面](https://1bobby-git.github.io/HA-iOS-ANCS/)，用 USB 数据线连接 ESP32 开发板。
 2. 选择板子型号，用 ESP Web Tools 刷入 factory 镜像。
-3. 连接开发板发出的 `IOS-ANCS-SETUP-XXXXXX` Wi-Fi，密码 `ancs-xxxxxx`。
+3. 连接开发板发出的 `iOS-MSG-XXXXXX` Wi-Fi，密码 `iosmsg-xxxxxx`。
 4. 在 `http://192.168.4.1` 门户中只保存 Wi-Fi 与 MQTT 设置。该门户不保存 Home Assistant 或 iPhone 通知设置。
 5. 不离开 `http://192.168.4.1` 设置门户，点击 **注册 iPhone 设备** 打开 120 秒注册窗口。Home Assistant 的 **开始 iPhone 注册** 按钮和长按 BOOT 3 秒也能打开同一个注册窗口。
-6. 查看设置门户显示的正确固定 PIN `123456`，在 iOS 蓝牙设置中选择设备并输入该码，允许通知共享；确认 Home Assistant 中 `最近通知` 和 `App 名称` 传感器已更新。
+6. 查看设置门户显示的正确固定 PIN `654321`，在 iOS 蓝牙设置中选择设备并输入该码，允许通知共享；确认 Home Assistant 中 `最近通知` 和 `App 名称` 传感器已更新。
 
 `XXXXXX` 是开发板基础 Wi-Fi MAC 地址的最后 6 位十六进制：SSID 使用大写，密码使用同一后缀的小写。通用形式为 `ancs-<lowercase_suffix>`，示例不是型号编号。基础设施 Wi-Fi 密码按原样保存，区分大小写（case-sensitive）。
 
@@ -56,7 +56,7 @@ iPhone → BLE ANCS → ESP32 → Wi-Fi/MQTT → Home Assistant
 
 ## Wi-Fi 与 MQTT 设置
 
-设置 AP 和 `http://192.168.4.1` 门户只保存 Wi-Fi 与 MQTT 设置。`IOS-ANCS-SETUP-XXXXXX` 的 `XXXXXX` 是基础 Wi-Fi MAC 地址最后 6 位：SSID 用大写，`ancs-xxxxxx`（通用形式 `ancs-<lowercase_suffix>`）密码用小写。Home Assistant 设备由 MQTT Discovery 创建。
+设置 AP 和 `http://192.168.4.1` 门户只保存 Wi-Fi 与 MQTT 设置。`iOS-MSG-XXXXXX` 的 `XXXXXX` 是基础 Wi-Fi MAC 地址最后 6 位：SSID 用大写，`iosmsg-xxxxxx`（通用形式 `ancs-<lowercase_suffix>`）密码用小写。Home Assistant 设备由 MQTT Discovery 创建。
 
 从固件 0.4.0 起，MQTT 服务器一旦连接成功，设置就会被记住。
 
@@ -69,7 +69,7 @@ iPhone → BLE ANCS → ESP32 → Wi-Fi/MQTT → Home Assistant
 
 ## iPhone 注册
 
-通过设置门户的 **注册 iPhone 设备** 按钮、Home Assistant 的 **开始 iPhone 注册** 按钮或长按 BOOT 3 秒打开 120 秒注册窗口。在 iOS 蓝牙设置中输入设置门户显示的正确固定 PIN `123456`，并允许通知共享。若已有保存的 iPhone 配对信息，同样的动作只会请求重连已注册的 iPhone。
+通过设置门户的 **注册 iPhone 设备** 按钮、Home Assistant 的 **开始 iPhone 注册** 按钮或长按 BOOT 3 秒打开 120 秒注册窗口。在 iOS 蓝牙设置中输入设置门户显示的正确固定 PIN `654321`，并允许通知共享。若已有保存的 iPhone 配对信息，同样的动作只会请求重连已注册的 iPhone。
 
 ## 支持板型与 v0.4.0 构建事实
 
@@ -130,11 +130,11 @@ homeassistant/automation_ios_ancs_baemin_delivery_tts.yaml
 ## 问题排查
 
 - 安装按钮不显示或失败：检查桌面版 Chrome/Edge、USB 数据线、操作系统串口权限。iPhone/iPad 浏览器无法进行 USB 刷写。
-- 看不到 `IOS-ANCS-SETUP-XXXXXX`：确认供电与刷写是否成功，长按 BOOT 3 秒打开恢复窗口。
+- 看不到 `iOS-MSG-XXXXXX`：确认供电与刷写是否成功，长按 BOOT 3 秒打开恢复窗口。
 - 打不开 `http://192.168.4.1`：确认确实连在 setup AP 上，并暂时关闭 VPN/蜂窝数据路由。
 - MQTT 连不上：检查 host、port、TLS CA、用户名/密码、ACL、重复的 Client ID。
 - iPhone 搜不到设备：用 `开始 iPhone 注册` 或 BOOT 3 秒重新打开 120 秒注册窗口。
-- 要求输入 PIN：输入 `设置门户在注册期间显示的固定 PIN 123456`，并允许 iOS 的通知共享请求。
+- 要求输入 PIN：输入 `设置门户在注册期间显示的固定 PIN 654321`，并允许 iOS 的通知共享请求。
 - Home Assistant 没有实体：检查 MQTT integration、Discovery 是否启用、retained config、`<base>/state`。
 
 更详细的流程见 [iOS Pairing Guide](docs/IOS_PAIRING.md) 和 [Troubleshooting](docs/TROUBLESHOOTING.md)。
@@ -146,7 +146,7 @@ homeassistant/automation_ios_ancs_baemin_delivery_tts.yaml
 - 留空 secret 输入框会保留已保存的值。但更改曾成功连接过的 MQTT 服务器地址或端口时，已保存的 MQTT 密码不会发往新服务器，必须重新输入。该保护只看地址与端口：在使用明文 MQTT（未开 TLS）时，能进入设置门户的人可以把 Wi-Fi 切到自己的网络并用同一 broker 地址应答来截取密码；要保护密码请使用 TLS 和 CA 证书。
 - iOS 通知的标题、正文、App 名称、App ID 会发布到 MQTT broker 和 Home Assistant，请限制 broker 访问权限。
 - 在 Home Assistant 中删除 iOS ANCS 集成条目时，集成保存的最后一条通知也会一并删除。0.6.13 及更早版本删除条目后，只要还有启用的集成条目，其文件会在下次启动或添加/启用条目时清除；若没有启用中的条目，请手动删除 `.storage/ha_ios_ancs.*.last_notification` 文件。
-- 固定 PIN `123456` 仅用于本地注册窗口；转赠设备前请先整机 erase 并重新注册。
+- 固定 PIN `654321` 仅用于本地注册窗口；转赠设备前请先整机 erase 并重新注册。
 
 ## 开发者参考
 

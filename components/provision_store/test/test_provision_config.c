@@ -44,11 +44,13 @@ void test_provision_config_requires_wifi_and_mqtt(void)
 
 void test_tls_requires_ca(void)
 {
+    /* A blank CA with TLS enabled is valid: the client falls back to the
+     * root certificate bundle built into the firmware. */
     provision_config_t config = valid_config();
     config.mqtt_tls = true;
     config.mqtt_ca[0] = '\0';
 
-    TEST_ASSERT_EQUAL(PROVISION_CONFIG_TLS_CA_REQUIRED, provision_config_validate(&config));
+    TEST_ASSERT_EQUAL(PROVISION_CONFIG_OK, provision_config_validate(&config));
 
     strcpy(config.mqtt_ca, "-----BEGIN CERTIFICATE-----\nca\n-----END CERTIFICATE-----");
     TEST_ASSERT_EQUAL(PROVISION_CONFIG_OK, provision_config_validate(&config));
@@ -63,6 +65,20 @@ void test_mqtt_client_id_and_base_topic_are_required(void)
     config = valid_config();
     config.mqtt_base_topic[0] = '\0';
     TEST_ASSERT_EQUAL(PROVISION_CONFIG_MISSING_MQTT_BASE_TOPIC, provision_config_validate(&config));
+
+    /* Malformed shapes are rejected at save time, not at connect time. */
+    strcpy(config.mqtt_base_topic, "/leading");
+    TEST_ASSERT_EQUAL(PROVISION_CONFIG_INVALID_MQTT_BASE_TOPIC, provision_config_validate(&config));
+    strcpy(config.mqtt_base_topic, "trailing/");
+    TEST_ASSERT_EQUAL(PROVISION_CONFIG_INVALID_MQTT_BASE_TOPIC, provision_config_validate(&config));
+    strcpy(config.mqtt_base_topic, "double//segment");
+    TEST_ASSERT_EQUAL(PROVISION_CONFIG_INVALID_MQTT_BASE_TOPIC, provision_config_validate(&config));
+    strcpy(config.mqtt_base_topic, "wild/+card");
+    TEST_ASSERT_EQUAL(PROVISION_CONFIG_INVALID_MQTT_BASE_TOPIC, provision_config_validate(&config));
+
+    config = valid_config();
+    strcpy(config.mqtt_client_id, "bad client id!");
+    TEST_ASSERT_EQUAL(PROVISION_CONFIG_INVALID_MQTT_CLIENT_ID, provision_config_validate(&config));
 }
 
 void test_blank_secret_fields_preserve_existing_values(void)

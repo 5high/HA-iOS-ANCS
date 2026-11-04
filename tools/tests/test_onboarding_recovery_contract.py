@@ -97,10 +97,10 @@ def test_fixed_passkey_and_ap_hardening_are_enabled():
     client = read("components/ancs_client/ancs_client.c")
     runtime = read("components/provisioning/provisioning_runtime.c")
 
-    assert "#define DEVICE_CREDENTIALS_BLE_PASSKEY 123456U" in credentials
+    assert "#define DEVICE_CREDENTIALS_BLE_PASSKEY 654321U" in credentials
     assert "esp_fill_random" not in credentials
     assert "device_credentials_ble_passkey()" in client
-    assert "123456" not in client
+    assert "654321" not in client
     assert "#define PROVISIONING_AP_MAX_CLIENTS 2" in runtime
     assert "ap_config->ap.pmf_cfg.capable = true" in runtime
 
@@ -182,7 +182,7 @@ def test_device_credentials_use_fixed_pairing_pin_without_nvs():
     credentials = read("components/device_credentials/device_credentials.c")
     component = read("components/device_credentials/CMakeLists.txt")
 
-    assert "#define DEVICE_CREDENTIALS_BLE_PASSKEY 123456U" in credentials
+    assert "#define DEVICE_CREDENTIALS_BLE_PASSKEY 654321U" in credentials
     assert "device_credentials_init" in credentials
     assert "esp_fill_random" not in credentials
     assert "nvs_" not in credentials

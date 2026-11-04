@@ -41,11 +41,11 @@ INSTALLER_SECTION_MARKERS = (
     "verify",
 )
 INSTALLER_FACTS = (
-    "IOS-ANCS-SETUP-XXXXXX",
-    "ancs-xxxxxx",
+    "iOS-MSG-XXXXXX",
+    "iosmsg-xxxxxx",
     "http://192.168.4.1",
     "iPhone 注册开始",
-    "123456",
+    "654321",
 )
 LEGACY_INSTALLER_COPY = (
     "ANCS Flash Station",
@@ -173,7 +173,7 @@ def test_installer_exposes_generic_setup_pairing_and_home_assistant_facts():
 
     for fact in INSTALLER_FACTS:
         assert fact in index, fact
-    assert "123456" in index
+    assert "654321" in index
 
 
 def test_readmes_and_installer_link_app_id_reference():

@@ -128,6 +128,14 @@ provisioning_state_t provisioning_reduce(provisioning_state_t current,
         }
         break;
 
+    case PROVISION_EVENT_MQTT_SETTINGS_INVALID:
+        /* Structurally broken settings: always show the portal, even if a
+         * previous set once connected. */
+        current.mqtt_connected = false;
+        forget_mqtt_refusal(&current);
+        current.recovery_required = true;
+        break;
+
     case PROVISION_EVENT_MQTT_SETTINGS_VERIFIED:
         current.mqtt_settings_verified = current.valid_config;
         break;

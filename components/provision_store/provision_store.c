@@ -1,5 +1,6 @@
 #include "provision_store.h"
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -97,6 +98,36 @@ static bool string_field_present(const char *value, size_t max_len)
     return string_field_valid(value, max_len) && value[0] != '\0';
 }
 
+/* The base topic is joined as "<base>/<suffix>", so every segment must be a
+ * non-empty token without wildcards or slashes; otherwise the device builds
+ * topics the broker refuses and only fails later at connect time. */
+static bool base_topic_is_wellformed(const char *value, size_t max_len)
+{
+    if (!string_field_present(value, max_len)) {
+        return false;
+    }
+    const size_t length = strlen(value);
+    if (value[0] == '/' || value[length - 1] == '/') {
+        return false;
+    }
+    size_t segment = 0;
+    for (size_t i = 0; i <= length; ++i) {
+        const char c = value[i];
+        if (c == '\0' || c == '/') {
+            if (segment == 0) {
+                return false; /* empty segment: "//" */
+            }
+            segment = 0;
+            continue;
+        }
+        if (c == '+' || c == '#') {
+            return false; /* publish wildcards */
+        }
+        ++segment;
+    }
+    return true;
+}
+
 provision_config_result_t provision_config_validate(const provision_config_t *config)
 {
     if (config == NULL) {
@@ -121,21 +152,30 @@ provision_config_result_t provision_config_validate(const provision_config_t *co
     if (config->mqtt_port == 0) {
         return PROVISION_CONFIG_INVALID_MQTT_PORT;
     }
-    if (config->mqtt_tls && !string_field_present(config->mqtt_ca, PROVISION_MQTT_CA_MAX)) {
-        return PROVISION_CONFIG_TLS_CA_REQUIRED;
-    }
+    /* A blank CA with TLS enabled is valid: the client then verifies against
+     * the root certificate bundle built into the firmware. */
     if (!string_field_present(config->mqtt_client_id, PROVISION_MQTT_CLIENT_ID_MAX)) {
         return PROVISION_CONFIG_MISSING_MQTT_CLIENT_ID;
+    }
+    for (size_t i = 0; config->mqtt_client_id[i] != '\0'; ++i) {
+        const unsigned char c = (unsigned char)config->mqtt_client_id[i];
+        if (!isalnum(c) && c != '_' && c != '-') {
+            return PROVISION_CONFIG_INVALID_MQTT_CLIENT_ID;
+        }
     }
     if (!string_field_present(config->mqtt_base_topic, PROVISION_MQTT_BASE_TOPIC_MAX)) {
         return PROVISION_CONFIG_MISSING_MQTT_BASE_TOPIC;
     }
+    if (!base_topic_is_wellformed(config->mqtt_base_topic, PROVISION_MQTT_BASE_TOPIC_MAX)) {
+        return PROVISION_CONFIG_INVALID_MQTT_BASE_TOPIC;
+    }
     return PROVISION_CONFIG_OK;
 }
 
-esp_err_t provision_config_merge_preserving_secrets(
+esp_err_t provision_config_merge_preserving_secrets_ex(
     const provision_config_t *existing,
     const provision_config_t *update,
+    bool clear_mqtt_ca,
     provision_config_t *out)
 {
     if (existing == NULL || update == NULL || out == NULL) {
@@ -153,10 +193,26 @@ esp_err_t provision_config_merge_preserving_secrets(
         strlcpy(out->mqtt_password, existing->mqtt_password, sizeof(out->mqtt_password));
     }
     if (out->mqtt_ca[0] == '\0' && existing->mqtt_ca[0] != '\0') {
-        strlcpy(out->mqtt_ca, existing->mqtt_ca, sizeof(out->mqtt_ca));
+        /* A blank CA with TLS enabled is a validation error, not a request to
+         * wipe the stored certificate; keep it so typo fixes stay one step. */
+        const bool clear_requested = clear_mqtt_ca || !update->mqtt_tls;
+        if (clear_requested) {
+            out->mqtt_ca[0] = '\0';
+        } else {
+            strlcpy(out->mqtt_ca, existing->mqtt_ca, sizeof(out->mqtt_ca));
+        }
     }
 
-    return provision_config_validate(out) == PROVISION_CONFIG_OK ? ESP_OK : ESP_ERR_INVALID_ARG;
+    const provision_config_result_t validation = provision_config_validate(out);
+    return validation == PROVISION_CONFIG_OK ? ESP_OK : (esp_err_t)validation;
+}
+
+esp_err_t provision_config_merge_preserving_secrets(
+    const provision_config_t *existing,
+    const provision_config_t *update,
+    provision_config_t *out)
+{
+    return provision_config_merge_preserving_secrets_ex(existing, update, false, out);
 }
 
 esp_err_t provision_config_redact_status(

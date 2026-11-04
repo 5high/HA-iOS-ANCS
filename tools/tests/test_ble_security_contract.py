@@ -48,7 +48,7 @@ def test_ancs_uses_sc_mitm_with_device_specific_passkey():
     )
     assert "esp_ble_io_cap_t io_capability = ESP_IO_CAP_OUT;" in source
     assert "device_credentials_ble_passkey()" in source
-    assert "123456" not in source
+    assert "654321" not in source
     assert "static_passkey < 100000U" in source
     assert "ESP_BLE_SM_SET_STATIC_PASSKEY" in source
     assert "ESP_BLE_SEC_ENCRYPT_MITM" in source

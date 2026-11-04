@@ -28,7 +28,9 @@ typedef enum {
     PROVISION_CONFIG_MISSING_MQTT_HOST,
     PROVISION_CONFIG_INVALID_MQTT_PORT,
     PROVISION_CONFIG_MISSING_MQTT_CLIENT_ID,
+    PROVISION_CONFIG_INVALID_MQTT_CLIENT_ID,
     PROVISION_CONFIG_MISSING_MQTT_BASE_TOPIC,
+    PROVISION_CONFIG_INVALID_MQTT_BASE_TOPIC,
     PROVISION_CONFIG_TLS_CA_REQUIRED,
 } provision_config_result_t;
 
@@ -70,6 +72,15 @@ provision_config_result_t provision_config_validate(const provision_config_t *co
 esp_err_t provision_config_merge_preserving_secrets(
     const provision_config_t *existing,
     const provision_config_t *update,
+    provision_config_t *out);
+/* Same merge, but an explicitly supplied clear flag wipes the stored CA
+ * instead of keeping the old value. A blank CA with TLS enabled still fails
+ * validation, so clearing the CA must go together with turning TLS off or a
+ * replacement certificate. */
+esp_err_t provision_config_merge_preserving_secrets_ex(
+    const provision_config_t *existing,
+    const provision_config_t *update,
+    bool clear_mqtt_ca,
     provision_config_t *out);
 esp_err_t provision_config_redact_status(
     const provision_config_t *config,
