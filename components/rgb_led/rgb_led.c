@@ -6,9 +6,15 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "soc/soc_caps.h"
+
+#if SOC_RMT_SUPPORTED
 #include "led_strip.h"
+#endif
 
 static const char *TAG = "rgb_led";
+
+#if SOC_RMT_SUPPORTED
 
 /* Onboard addressable LED data pin. ESP32-S3-DevKitC-1 revision v1.0 wires
  * the WS2812 bead to GPIO48 (revision v1.1 moved it to GPIO38). */
@@ -218,3 +224,25 @@ esp_err_t rgb_led_set_idle_mode(rgb_led_idle_mode_t mode)
     s_idle_mode = mode;
     return ESP_OK;
 }
+
+#else /* !SOC_RMT_SUPPORTED */
+
+/* Chips without an RMT peripheral (e.g. ESP32-C2/C61) cannot clock a WS2812
+ * data line; the LED feature compiles out and stays inert. */
+esp_err_t rgb_led_init(void)
+{
+    ESP_LOGI(TAG, "no RMT on this target; rgb led disabled");
+    return ESP_OK;
+}
+
+void rgb_led_notify_arrived(void) {}
+
+esp_err_t rgb_led_set_idle_mode(rgb_led_idle_mode_t mode)
+{
+    if (mode != RGB_LED_IDLE_OFF && mode != RGB_LED_IDLE_BREATH_BLUE) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    return ESP_OK;
+}
+
+#endif /* SOC_RMT_SUPPORTED */
