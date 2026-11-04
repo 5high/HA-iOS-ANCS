@@ -131,10 +131,12 @@ function setBusy(id, busy, busyLabel) {
   button.textContent = busy ? busyLabel : button.dataset.label;
 }
 
-// Server error keys that need a Korean explanation instead of the raw key.
+// Server error keys that need a friendly explanation instead of the raw key.
 const API_ERROR_MESSAGES = {
   mqtt_password_required:
     t('更改曾成功连接过的 MQTT 服务器地址或端口时，必须重新输入 MQTT 密码。'),
+  save_failed:
+    t('保存失败：配置校验未通过。开启 TLS 时必须提供 CA 证书；想清除旧证书请清空 CA 栏并关闭 TLS。'),
 };
 
 async function api(path, options = {}) {
@@ -304,6 +306,9 @@ function hydrateForm(status, apName, deviceFamily) {
     config.mqtt_client_id || recommendedClientId(apName, deviceFamily);
   $('mqtt-base-topic').value =
     config.mqtt_base_topic || recommendedBaseTopic(apName, deviceFamily);
+  $('mqtt-ca').placeholder = config.mqtt_ca_configured
+    ? t('已保存 CA 证书。留空并保存 = 保留；想清除就清空此栏并关闭 TLS，或贴入新证书替换。')
+    : '-----BEGIN CERTIFICATE-----';
   formHydrated = true;
 }
 

@@ -763,7 +763,7 @@ def test_task7_reuses_large_config_buffers_and_rolls_back_partial_start():
     assert "calloc(1, sizeof(*existing))" in source
     assert "calloc(1, sizeof(*merged))" not in source
     assert "calloc(1, sizeof(*readback))" not in source
-    assert "provision_config_merge_preserving_secrets(existing, update, update)" in source
+    assert "provision_config_merge_preserving_secrets_ex(existing, update, clear_mqtt_ca," in source
     assert "provision_store_load(existing)" in source
     assert "calloc(PORTAL_HTTP_SCAN_LIMIT, sizeof(*records))" in source
     assert "cJSON_PrintUnformatted" in source

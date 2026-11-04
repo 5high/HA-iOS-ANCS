@@ -133,9 +133,10 @@ provision_config_result_t provision_config_validate(const provision_config_t *co
     return PROVISION_CONFIG_OK;
 }
 
-esp_err_t provision_config_merge_preserving_secrets(
+esp_err_t provision_config_merge_preserving_secrets_ex(
     const provision_config_t *existing,
     const provision_config_t *update,
+    bool clear_mqtt_ca,
     provision_config_t *out)
 {
     if (existing == NULL || update == NULL || out == NULL) {
@@ -153,10 +154,25 @@ esp_err_t provision_config_merge_preserving_secrets(
         strlcpy(out->mqtt_password, existing->mqtt_password, sizeof(out->mqtt_password));
     }
     if (out->mqtt_ca[0] == '\0' && existing->mqtt_ca[0] != '\0') {
-        strlcpy(out->mqtt_ca, existing->mqtt_ca, sizeof(out->mqtt_ca));
+        /* A blank CA with TLS enabled is a validation error, not a request to
+         * wipe the stored certificate; keep it so typo fixes stay one step. */
+        const bool clear_requested = clear_mqtt_ca || !update->mqtt_tls;
+        if (clear_requested) {
+            out->mqtt_ca[0] = '\0';
+        } else {
+            strlcpy(out->mqtt_ca, existing->mqtt_ca, sizeof(out->mqtt_ca));
+        }
     }
 
     return provision_config_validate(out) == PROVISION_CONFIG_OK ? ESP_OK : ESP_ERR_INVALID_ARG;
+}
+
+esp_err_t provision_config_merge_preserving_secrets(
+    const provision_config_t *existing,
+    const provision_config_t *update,
+    provision_config_t *out)
+{
+    return provision_config_merge_preserving_secrets_ex(existing, update, false, out);
 }
 
 esp_err_t provision_config_redact_status(

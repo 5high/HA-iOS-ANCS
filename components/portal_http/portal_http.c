@@ -256,10 +256,15 @@ static bool json_bool(const cJSON *json, const char *name, bool *out)
     return true;
 }
 
-static bool parse_config_update(const cJSON *json, provision_config_t *out)
+static bool parse_config_update(const cJSON *json, provision_config_t *out, bool *clear_mqtt_ca)
 {
     memset(out, 0, sizeof(*out));
     out->schema_version = PROVISION_CONFIG_SCHEMA_VERSION;
+    /* A present-but-empty mqtt_ca means "remove the stored certificate"; a
+     * missing field keeps it. */
+    const cJSON *ca_field = cJSON_GetObjectItemCaseSensitive(json, "mqtt_ca");
+    *clear_mqtt_ca = cJSON_IsString(ca_field) && ca_field->valuestring != NULL &&
+                     ca_field->valuestring[0] == '\0';
     return json_copy_string(json,
                             "wifi_ssid",
                             out->wifi_ssid,
@@ -619,7 +624,8 @@ static esp_err_t handle_config_post(httpd_req_t *req)
         return send_error_json(req, "500 Internal Server Error", "out of memory");
     }
 
-    if (!parse_config_update(json, update)) {
+    bool clear_mqtt_ca = false;
+    if (!parse_config_update(json, update, &clear_mqtt_ca)) {
         cJSON_Delete(json);
         free(update);
         free(existing);
@@ -637,7 +643,8 @@ static esp_err_t handle_config_post(httpd_req_t *req)
             free(existing);
             return send_error_json(req, "400 Bad Request", "mqtt_password_required");
         }
-        err = provision_config_merge_preserving_secrets(existing, update, update);
+        err = provision_config_merge_preserving_secrets_ex(existing, update, clear_mqtt_ca,
+                                                           update);
         if (err == ESP_OK && password_rule == PROVISION_MQTT_PASSWORD_DROP) {
             /* A new broker without a username gets no stored password. */
             memset(update->mqtt_password, 0, sizeof(update->mqtt_password));
