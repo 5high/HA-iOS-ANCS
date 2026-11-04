@@ -8,6 +8,9 @@ const PORTAL_LANG = (typeof navigator === 'undefined' ||
   String(navigator.language || '').toLowerCase().startsWith('zh')) ? 'zh' : 'en';
 
 const PORTAL_EN = {
+  "此操作只能在设备热点内进行：请连接 Wi-Fi「IOS-ANCS-SETUP」热点后打开 192.168.4.1 再试。当前是通过局域网地址访问的，出于安全考虑（防止办公室内其他人远程抢绑 iPhone），设备只接受来自自身热点的请求。": 'This action only works over the device hotspot. Connect to the "IOS-ANCS-SETUP" Wi-Fi, open 192.168.4.1 in your browser, and try again. You are reaching the device via its LAN address, and for security (so nobody else in the office can remotely claim the iPhone pairing) it only accepts requests from its own hotspot.',
+  "保存失败：配置校验未通过。开启 TLS 时必须提供 CA 证书；想清除旧证书请清空 CA 栏并关闭 TLS。": 'Save failed: the settings did not pass validation. With TLS enabled a CA certificate is required; to clear an old certificate, empty the CA field and turn TLS off.',
+  "已保存 CA 证书。留空并保存 = 保留；想清除就清空此栏并关闭 TLS，或贴入新证书替换。": 'A CA certificate is stored. Leave blank and save to keep it; to clear it, empty this field and turn TLS off, or paste a replacement certificate.',
   "연결된 적이 있는 MQTT 서버의 주소나 포트를 바꾸면 저장된 비밀번호를 새 서버로 보내지 않습니다. MQTT 비밀번호를 다시 입력하세요.": 'When you change the address or port of an MQTT server that connected before, re-enter the MQTT password.',
   "확인 중": 'Checking',
   "iPhone 기기 등록": 'Enroll iPhone',
@@ -137,6 +140,8 @@ const API_ERROR_MESSAGES = {
     t('更改曾成功连接过的 MQTT 服务器地址或端口时，必须重新输入 MQTT 密码。'),
   save_failed:
     t('保存失败：配置校验未通过。开启 TLS 时必须提供 CA 证书；想清除旧证书请清空 CA 栏并关闭 TLS。'),
+  'AP interface required':
+    t('此操作只能在设备热点内进行：请连接 Wi-Fi「IOS-ANCS-SETUP」热点后打开 192.168.4.1 再试。当前是通过局域网地址访问的，出于安全考虑（防止办公室内其他人远程抢绑 iPhone），设备只接受来自自身热点的请求。'),
 };
 
 async function api(path, options = {}) {
