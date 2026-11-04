@@ -267,6 +267,19 @@ function mqttErrorDetail(system, config) {
   return `${endpoint}${retry}`;
 }
 
+// A TLS handshake failure only reports a bare ESP-IDF error number, which is
+// meaningless to users. Spell out the two common ones and keep the raw code.
+function espTlsErrorHint(system) {
+  const tlsErr = Number(system.mqtt_last_esp_tls_err || 0);
+  if (tlsErr === -0x2700) {
+    return ' · ' + t('TLS 证书校验失败：请确认 CA 栏留空（使用固件内置根证书）或粘贴与证书链匹配的 CA。');
+  }
+  if (tlsErr === -0x6E00) {
+    return ' · ' + t('TLS 主机名与证书不符：请使用证书签发的域名（如 mqtt.5high.top），不要用 IP 地址。');
+  }
+  return tlsErr ? ` · ${t('TLS 错误码')} ${tlsErr >>> 0}` : '';
+}
+
 function relayDropBreakdown(system = {}) {
   const detailKeys = [
     'notifications_dropped_offline',
@@ -365,7 +378,7 @@ function applyStatus(status) {
   } else if (system.mqtt_connecting) {
     updateTile('status-mqtt', 'pending', t('连接中'), mqttEndpoint(config));
   } else if (runtime.sta_has_ip && Number(system.mqtt_last_error_at_ms || 0) > 0) {
-    updateTile('status-mqtt', 'error', t('连接失败'), mqttErrorDetail(system, config));
+    updateTile('status-mqtt', 'error', t('连接失败'), mqttErrorDetail(system, config) + espTlsErrorHint(system));
   } else if (runtime.sta_has_ip) {
     updateTile('status-mqtt', 'pending', t('等待连接'), mqttErrorDetail(system, config));
   } else {
