@@ -2367,7 +2367,8 @@ esp_err_t ancs_client_init(void)
     }
     const int name_length = snprintf(s_client.device_name,
                                      sizeof(s_client.device_name),
-                                     "IOS-ANCS-" ANCS_DEVICE_FAMILY "-%02X%02X",
+                                     "iOS-MSG-%02X%02X%02X",
+                                     base_mac[3],
                                      base_mac[4],
                                      base_mac[5]);
     if (name_length < 0 || (size_t)name_length >= sizeof(s_client.device_name)) {

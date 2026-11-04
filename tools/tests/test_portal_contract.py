@@ -74,7 +74,7 @@ def render_portal_ble_status(system_overrides):
             "sta_started": False,
             "sta_connecting": False,
             "sta_has_ip": False,
-            "ap_ssid": "IOS-ANCS-SETUP-A1B2C3",
+            "ap_ssid": "iOS-MSG-A1B2C3",
         },
         "system": {
             "mqtt_connected": False,
@@ -579,7 +579,7 @@ def test_portal_renders_ble_status_for_all_runtime_states():
 def test_portal_enrollment_guidance_names_the_exact_iphone_bluetooth_entry():
     rendered = render_portal_ble_status({"enroll_window_open": True})
 
-    assert "IOS-ANCS-C6-B2C3" in rendered["guidance"]
+    assert "iOS-MSG-B2C3" in rendered["guidance"]
     assert "蓝牙设置" in rendered["guidance"]
 
 
@@ -593,7 +593,7 @@ def test_portal_applies_recommended_identifiers_from_device_suffix():
                 "sta_started": False,
                 "sta_connecting": False,
                 "sta_has_ip": False,
-                "ap_ssid": "IOS-ANCS-SETUP-A1B2C3",
+                "ap_ssid": "iOS-MSG-A1B2C3",
             },
             "system": {
                 "mqtt_connected": False,
@@ -620,7 +620,7 @@ def test_portal_preserves_existing_custom_identifiers():
                 "mqtt_client_id": "livingroom_ancs",
                 "mqtt_base_topic": "home/livingroom/ancs",
             },
-            "runtime": {"ap_ssid": "IOS-ANCS-SETUP-A1B2C3"},
+            "runtime": {"ap_ssid": "iOS-MSG-A1B2C3"},
             "system": {},
         }
     )
@@ -786,7 +786,7 @@ def test_setup_ap_password_is_lowercase_without_normalizing_station_password():
     header = read("components/provisioning/include/provisioning_runtime.h")
     runtime = read("components/provisioning/provisioning_runtime.c")
 
-    assert '#define PROVISIONING_RUNTIME_AP_PASSWORD_PREFIX "ancs-"' in header
+    assert '#define PROVISIONING_RUNTIME_AP_PASSWORD_PREFIX "iosmsg-"' in header
 
     identity = runtime.split("static esp_err_t make_ap_identity", 1)[1].split(
         "static void fill_ap_config", 1
