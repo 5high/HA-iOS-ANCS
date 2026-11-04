@@ -3,65 +3,65 @@ const boards = {
     chip: "32",
     name: "ESP32 / WROOM-32",
     boot: "GPIO 0",
-    validation: "v0.4.0 build verified",
+    validation: "v0.4.1 build verified",
     status: "BUILD VERIFIED",
-    description: "v0.4.0 ANCS-to-MQTT factory build for the ESP32/WROOM-32 family.",
-    hash: "SHA256 A2F1AA9088ED",
+    description: "v0.4.1 ANCS-to-MQTT factory build for the ESP32/WROOM-32 family.",
+    hash: "SHA256 9CACC19D38F0",
   },
   esp32c2: {
     chip: "C2",
     name: "ESP32-C2",
     boot: "GPIO 9",
-    validation: "v0.4.0 build verified",
+    validation: "v0.4.1 build verified",
     status: "BUILD VERIFIED",
-    description: "v0.4.0 ANCS-to-MQTT factory build for the ESP32-C2 family.",
-    hash: "SHA256 D2899E6C9E4D",
+    description: "v0.4.1 ANCS-to-MQTT factory build for the ESP32-C2 family.",
+    hash: "SHA256 E0B6D3926D4E",
   },
   esp32c3: {
     chip: "C3",
     name: "ESP32-C3",
     boot: "GPIO 9",
-    validation: "v0.4.0 build verified",
+    validation: "v0.4.1 build verified",
     status: "BUILD VERIFIED",
-    description: "v0.4.0 ANCS-to-MQTT factory build for the ESP32-C3 family.",
-    hash: "SHA256 D768DDE94A94",
+    description: "v0.4.1 ANCS-to-MQTT factory build for the ESP32-C3 family.",
+    hash: "SHA256 1D493AE7D240",
   },
   esp32c5: {
     chip: "C5",
     name: "ESP32-C5",
     boot: "GPIO 28",
-    validation: "v0.4.0 build verified",
+    validation: "v0.4.1 build verified",
     status: "BUILD VERIFIED",
-    description: "v0.4.0 ANCS-to-MQTT factory build for the ESP32-C5 family.",
-    hash: "SHA256 0C481C3C416C",
+    description: "v0.4.1 ANCS-to-MQTT factory build for the ESP32-C5 family.",
+    hash: "SHA256 A551ACBFAA2F",
   },
   esp32c6: {
     chip: "C6",
     name: "ESP32-C6",
     boot: "GPIO 9",
-    validation: "v0.4.0 build verified",
+    validation: "v0.4.1 build verified",
     status: "BUILD VERIFIED",
-    description: "v0.4.0 ANCS-to-MQTT factory build for the ESP32-C6 family.",
-    hash: "SHA256 334472B2C151",
+    description: "v0.4.1 ANCS-to-MQTT factory build for the ESP32-C6 family.",
+    hash: "SHA256 32C4A0B4FA4A",
   },
   esp32c61: {
     chip: "C61",
     name: "ESP32-C61",
     boot: "GPIO 9",
-    validation: "v0.4.0 build verified",
+    validation: "v0.4.1 build verified",
     status: "BUILD VERIFIED",
     description:
       "The ESP32-C61 is a separate newer chip, not a revision of the ESP32-C6. Select it only when the board is actually marked C61.",
-    hash: "SHA256 687ECDADCB18",
+    hash: "SHA256 9C3C17835FBD",
   },
   esp32s3: {
     chip: "S3",
     name: "ESP32-S3",
     boot: "GPIO 0",
-    validation: "v0.4.0 build verified",
+    validation: "v0.4.1 build verified",
     status: "BUILD VERIFIED",
-    description: "v0.4.0 ANCS-to-MQTT factory build for the ESP32-S3 family.",
-    hash: "SHA256 6D165A01729B",
+    description: "v0.4.1 ANCS-to-MQTT factory build for the ESP32-S3 family.",
+    hash: "SHA256 1771DDFB33BE",
   },
 };
 
@@ -72,13 +72,13 @@ const INSTALLER_LANG = (typeof navigator !== "undefined" &&
   String(navigator.language || "").toLowerCase().startsWith("zh")) ? "zh" : "en";
 
 const BOARD_DESCRIPTIONS_ZH = {
-  esp32: "适用于 ESP32/WROOM-32 系列的 v0.4.0 ANCS-to-MQTT 出厂镜像。",
-  esp32c2: "适用于 ESP32-C2 系列的 v0.4.0 ANCS-to-MQTT 出厂镜像。",
-  esp32c3: "适用于 ESP32-C3 系列的 v0.4.0 ANCS-to-MQTT 出厂镜像。",
-  esp32c5: "适用于 ESP32-C5 系列的 v0.4.0 ANCS-to-MQTT 出厂镜像。",
-  esp32c6: "适用于 ESP32-C6 系列的 v0.4.0 ANCS-to-MQTT 出厂镜像。",
+  esp32: "适用于 ESP32/WROOM-32 系列的 v0.4.1 ANCS-to-MQTT 出厂镜像。",
+  esp32c2: "适用于 ESP32-C2 系列的 v0.4.1 ANCS-to-MQTT 出厂镜像。",
+  esp32c3: "适用于 ESP32-C3 系列的 v0.4.1 ANCS-to-MQTT 出厂镜像。",
+  esp32c5: "适用于 ESP32-C5 系列的 v0.4.1 ANCS-to-MQTT 出厂镜像。",
+  esp32c6: "适用于 ESP32-C6 系列的 v0.4.1 ANCS-to-MQTT 出厂镜像。",
   esp32c61: "ESP32-C61 不是 ESP32-C6 的改版，而是一颗独立的新芯片。仅在板子实际丝印为 C61 时选择。",
-  esp32s3: "适用于 ESP32-S3 系列的 v0.4.0 ANCS-to-MQTT 出厂镜像。",
+  esp32s3: "适用于 ESP32-S3 系列的 v0.4.1 ANCS-to-MQTT 出厂镜像。",
 };
 
 function t(label) {
@@ -109,13 +109,12 @@ function updateClock() {
   const clock = document.getElementById("clock");
   if (!clock) return;
 
-  clock.textContent = `${new Intl.DateTimeFormat("ko-KR", {
-    timeZone: "Asia/Seoul",
+  clock.textContent = `${new Intl.DateTimeFormat(navigator.language || "en-US", {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
     hour12: false,
-  }).format(new Date())} KST`;
+  }).format(new Date())}`;
 }
 
 function applyBoard(target) {
