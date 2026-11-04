@@ -685,6 +685,12 @@ static esp_err_t handle_config_post(httpd_req_t *req)
         case PROVISION_CONFIG_MISSING_MQTT_BASE_TOPIC:
             reason = "missing_mqtt_base_topic";
             break;
+        case PROVISION_CONFIG_INVALID_MQTT_BASE_TOPIC:
+            reason = "invalid_mqtt_base_topic";
+            break;
+        case PROVISION_CONFIG_INVALID_MQTT_CLIENT_ID:
+            reason = "invalid_mqtt_client_id";
+            break;
         default:
             break;
         }
