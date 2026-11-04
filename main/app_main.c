@@ -692,7 +692,19 @@ static esp_err_t start_or_reconnect_mqtt(void)
     }
 
     ESP_LOGW(TAG, "MQTT connect start failed: %s", esp_err_to_name(error));
-    schedule_mqtt_retry();
+    if (error == ESP_ERR_INVALID_ARG) {
+        /* The stored settings themselves are invalid (e.g. a CA certificate
+         * pasted into the broker field): no retry can fix that, so tell the
+         * coordinator to run the normal settings-failure path, which opens
+         * the recovery AP for a corrected config instead of retrying forever
+         * with the portal closed. */
+        const app_event_msg_t message = { .type = APP_EVENT_MQTT };
+        if (!app_post(&message)) {
+            ESP_LOGW(TAG, "coordinator queue full settings-failure event");
+        }
+    } else {
+        schedule_mqtt_retry();
+    }
     return error;
 }
 
