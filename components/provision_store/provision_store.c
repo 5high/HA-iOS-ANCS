@@ -193,10 +193,13 @@ esp_err_t provision_config_merge_preserving_secrets_ex(
         strlcpy(out->mqtt_password, existing->mqtt_password, sizeof(out->mqtt_password));
     }
     if (out->mqtt_ca[0] == '\0' && existing->mqtt_ca[0] != '\0') {
-        /* A blank CA with TLS enabled is a validation error, not a request to
-         * wipe the stored certificate; keep it so typo fixes stay one step. */
-        const bool clear_requested = clear_mqtt_ca || !update->mqtt_tls;
-        if (clear_requested) {
+        /* A blank CA field with TLS enabled means "use the firmware's built-in
+         * public root bundle", which is a valid configuration — so an empty
+         * box is always a clear request, never a silent keep-old. Stale CAs
+         * must not haunt saves that already passed validation. An absent
+         * mqtt_ca key (clear_mqtt_ca == false) still preserves the stored CA
+         * so partial PATCH-style updates do not wipe it. */
+        if (clear_mqtt_ca) {
             out->mqtt_ca[0] = '\0';
         } else {
             strlcpy(out->mqtt_ca, existing->mqtt_ca, sizeof(out->mqtt_ca));
