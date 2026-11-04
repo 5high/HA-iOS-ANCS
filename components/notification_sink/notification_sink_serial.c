@@ -345,12 +345,16 @@ int notification_sink_publish(const ancs_notification_t *notification,
     return result;
 }
 
-esp_err_t notification_sink_register_observer(notification_sink_observer_t observer,
-                                              void *context)
+int notification_sink_register_observer(notification_sink_observer_t observer,
+                                        void *context)
 {
+    if (s_observer != NULL) {
+        /* Single-observer slot is taken — caller must chain observers itself. */
+        return -1;
+    }
     s_observer = observer;
     s_observer_context = context;
-    return ESP_OK;
+    return 0;
 }
 
 int notification_sink_publish_state(const char *state,

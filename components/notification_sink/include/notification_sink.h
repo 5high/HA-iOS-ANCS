@@ -26,8 +26,8 @@ int notification_sink_format_state_json(const char *state,
                                         size_t output_capacity);
 int notification_sink_publish(const ancs_notification_t *notification,
                               const char *device_name);
-esp_err_t notification_sink_register_observer(notification_sink_observer_t observer,
-                                              void *context);
+int notification_sink_register_observer(notification_sink_observer_t observer,
+                                        void *context);
 int notification_sink_publish_state(const char *state,
                                     uint32_t session_id,
                                     bool bonded,

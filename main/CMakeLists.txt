@@ -3,6 +3,7 @@ idf_component_register(
     INCLUDE_DIRS "."
     REQUIRES
         ancs_client
+        ancs_protocol
         esp_app_format
         esp_system
         mqtt_relay
@@ -12,4 +13,5 @@ idf_component_register(
         platform_identity
         provision_store
         provisioning
+        rgb_led
 )

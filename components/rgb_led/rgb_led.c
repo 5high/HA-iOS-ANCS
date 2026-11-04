@@ -128,10 +128,26 @@ static void refresh_tick(void *arg)
         return;
     }
 
+#ifdef RGB_LED_DEMO_COMET
+    /* Demo build: loop the very same comet animation the notification path
+     * uses, so a camera/eye can verify the shipped effect without waiting
+     * for a real iOS notification. */
+    if (comet < 0) {
+        rgb_led_notify_arrived();
+        comet = 0;
+    }
+    {
+        uint8_t r, g, b;
+        comet_colour(comet, &r, &g, &b);
+        show(r, g, b);
+    }
+    return;
+#else
     /* Idle-off: repaint once, then stay quiet. */
     if (!s_have_last || s_last_r || s_last_g || s_last_b) {
         show(0, 0, 0);
     }
+#endif
 }
 
 /* ---- public API --------------------------------------------------------- */

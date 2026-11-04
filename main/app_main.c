@@ -24,6 +24,7 @@
 #include "provision_store.h"
 #include "provisioning_runtime.h"
 #include "provisioning_state.h"
+#include "rgb_led.h"
 
 #define APP_EVENT_QUEUE_LENGTH 16
 #define APP_COORDINATOR_STACK 6144
@@ -1201,6 +1202,23 @@ static void log_error(const char *operation, esp_err_t error)
     }
 }
 
+/* Notification sink observer: flash the onboard RGB animation on every
+ * complete notification, independent of HTTP/MQTT delivery outcome.
+ * The sink exposes a single observer slot, so this one fans out to the MQTT
+ * relay as well. */
+static void app_led_observe_notification(
+    const ancs_notification_t *notification,
+    const char *device_name,
+    void *context)
+{
+    (void)context;
+    if (notification == NULL) {
+        return;
+    }
+    rgb_led_notify_arrived();
+    mqtt_relay_observe_notification(notification, device_name, NULL);
+}
+
 void app_main(void)
 {
     esp_err_t error = nvs_flash_init();
@@ -1231,9 +1249,16 @@ void app_main(void)
     s_app.mqtt_verified_fingerprint = verified_fingerprint;
     app_state_unlock();
 
-    error = notification_sink_register_observer(
-        mqtt_relay_observe_notification, NULL);
-    log_error("relay observer registration", error);
+    int observer_slot = notification_sink_register_observer(
+        app_led_observe_notification, NULL);
+    if (observer_slot != 0) {
+        ESP_LOGE(TAG, "notification sink observer registration failed");
+    }
+
+    /* Bring up the onboard RGB animation early and unconditionally. It is
+     * cosmetic: a failure here must not stop the notification pipeline. */
+    error = rgb_led_init();
+    log_error("rgb led init", error);
 
     error = provisioning_runtime_init(config_valid ? &s_app.config : NULL,
                                       provisioning_event_callback,
