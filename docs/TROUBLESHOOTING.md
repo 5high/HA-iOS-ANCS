@@ -56,7 +56,7 @@ Moving settings that connected before to a broker that takes a username without 
 
 - Open the 120-second enrollment window with setup-portal **Enroll iPhone**, Home Assistant **Start iPhone enrollment**, or BOOT for 3 seconds.
 - Keep the setup portal open and pair from iOS **Settings > Bluetooth**.
-- Enter the fixed PIN `123456` displayed in the setup portal.
+- Enter the fixed PIN `654321` displayed in the setup portal.
 - Allow notification sharing when prompted.
 
 If pairing information already exists, enrollment requests reconnect to the stored iPhone only. Use confirmed Replace enrollment only when intentionally deleting the current iPhone pairing information.

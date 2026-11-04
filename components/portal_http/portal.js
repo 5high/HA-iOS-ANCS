@@ -60,7 +60,7 @@ const PORTAL_EN = {
   "{} · 고정 PIN {}": '${bluetoothName} · fixed PIN ${blePasskey}',
   "{}을 iPhone Bluetooth 설정에서 선택하세요": 'Select ${bluetoothName} in iPhone Bluetooth settings',
   "등록 신호를 보내고 있습니다. iPhone Bluetooth 설정에서 {}을 선택하고 고정 PIN {}를 입력하세요.": 'Sending the enrollment signal. Select ${bluetoothName} in iPhone Bluetooth settings and enter fixed PIN ${blePasskey}.',
-  "등록 신호를 보내고 있습니다. iPhone Bluetooth 설정에서 {}을 선택하고 고정 PIN 123456을 입력하세요.": 'Sending the enrollment signal. Select ${bluetoothName} in iPhone Bluetooth settings and enter fixed PIN 123456.',
+  "등록 신호를 보내고 있습니다. iPhone Bluetooth 설정에서 {}을 선택하고 고정 PIN 654321을 입력하세요.": 'Sending the enrollment signal. Select ${bluetoothName} in iPhone Bluetooth settings and enter fixed PIN 654321.',
   "등록됨 · 연결 대기": 'Enrolled · waiting to connect',
   "등록된 iPhone을 찾고 있습니다": 'Looking for the enrolled iPhone',
   "등록된 iPhone만 자동으로 다시 연결됩니다. 이 페이지의 버튼으로 재연결 신호를 다시 보낼 수 있습니다.": 'Only the enrolled iPhone reconnects automatically. Use the button on this page to resend the reconnect signal.',
@@ -391,7 +391,7 @@ function applyStatus(status) {
     );
     $('ble-guidance').textContent = blePasskey
       ? t(`正在发送注册信号。请在 iPhone 蓝牙设置中选择 ${bluetoothName} 并输入固定 PIN ${blePasskey}。`)
-      : t(`正在发送注册信号。请在 iPhone 蓝牙设置中选择 ${bluetoothName} 并输入固定 PIN 123456。`);
+      : t(`正在发送注册信号。请在 iPhone 蓝牙设置中选择 ${bluetoothName} 并输入固定 PIN 654321。`);
   } else if (system.ble_bonded) {
     updateTile('status-ble', 'pending', t('已注册 · 等待连接'), t('正在寻找已注册的 iPhone'));
     $('ble-guidance').textContent = t('只有已注册的 iPhone 会自动重新连接。你可以用本页按钮重新发送重连信号。');
