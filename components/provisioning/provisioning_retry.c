@@ -71,6 +71,11 @@ void provisioning_retry_failed(provisioning_retry_t *retry, uint64_t now_ms,
         if (retry->auth_failures < UINT8_MAX) {
             ++retry->auth_failures;
         }
+        /* A wrong password/SSID never fixes itself: after a few tries the
+         * user needs the portal to correct it. */
+        if (retry->auth_failures >= PROVISION_RETRY_AUTH_RECOVERY_AFTER) {
+            retry->recovery_announced = true;
+        }
     } else {
         retry->auth_failures = 0;
     }

@@ -70,6 +70,9 @@ int main(void) {
     }
     assert(r.auth_failures == 3);
     assert(provisioning_retry_remaining_ms(&r, 20003) == 300000);
+    /* A wrong Wi-Fi password must open the recovery portal on its own:
+     * it never fixes itself, and without this the AP stays hidden. */
+    assert(r.recovery_announced);
     return 0;
 }
 ''', encoding="utf-8")
