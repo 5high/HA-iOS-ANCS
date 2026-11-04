@@ -694,14 +694,10 @@ static esp_err_t start_or_reconnect_mqtt(void)
     ESP_LOGW(TAG, "MQTT connect start failed: %s", esp_err_to_name(error));
     if (error == ESP_ERR_INVALID_ARG) {
         /* The stored settings themselves are invalid (e.g. a CA certificate
-         * pasted into the broker field): no retry can fix that, so tell the
-         * coordinator to run the normal settings-failure path, which opens
-         * the recovery AP for a corrected config instead of retrying forever
-         * with the portal closed. */
-        const app_event_msg_t message = { .type = APP_EVENT_MQTT };
-        if (!app_post(&message)) {
-            ESP_LOGW(TAG, "coordinator queue full settings-failure event");
-        }
+         * pasted into the broker field): no retry can fix that, so ask the
+         * reducer to open the recovery portal for a corrected config instead
+         * of retrying forever with the portal closed. */
+        app_post_provisioning(PROVISION_EVENT_MQTT_SETTINGS_INVALID, 0);
     } else {
         schedule_mqtt_retry();
     }
@@ -848,6 +844,14 @@ static void handle_provisioning_event(provisioning_event_t event,
             (void)xTimerStop(s_wifi_status_timer, 0);
         }
         schedule_mqtt_retry();
+        break;
+
+    case PROVISION_EVENT_MQTT_SETTINGS_INVALID:
+        /* The settings cannot connect as stored; the recovery portal is now
+         * open, and its own idle timer will close it after ten minutes. */
+        if (s_recovery_timer != NULL) {
+            (void)xTimerReset(s_recovery_timer, 0);
+        }
         break;
 
     case PROVISION_EVENT_BOOT_HELD_3S:

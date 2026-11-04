@@ -31,6 +31,10 @@ typedef enum {
     PROVISION_EVENT_WIFI_DISCONNECTED,
     /* The broker answered and refused these settings. */
     PROVISION_EVENT_MQTT_REJECTED,
+    /* The stored settings are structurally invalid (e.g. a CA certificate
+     * pasted into the broker field); no retry can fix them, so open the
+     * recovery portal right away instead of waiting out a refusal streak. */
+    PROVISION_EVENT_MQTT_SETTINGS_INVALID,
     /* The saved MQTT settings connected before (stored marker). */
     PROVISION_EVENT_MQTT_SETTINGS_VERIFIED,
 } provisioning_event_t;
