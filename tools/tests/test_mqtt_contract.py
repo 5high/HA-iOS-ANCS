@@ -71,7 +71,7 @@ def test_client_config_sets_broker_auth_tls_and_lwt():
     assert '.session.last_will.msg = "offline"' in source
     assert ".session.last_will.qos = 1" in source
     assert ".session.last_will.retain = true" in source
-    assert "PROVISION_CONFIG_TLS_CA_REQUIRED" in source
+    assert "esp_crt_bundle_attach" in source
     assert ".network.disable_auto_reconnect = true" in source
 
 

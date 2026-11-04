@@ -152,9 +152,8 @@ provision_config_result_t provision_config_validate(const provision_config_t *co
     if (config->mqtt_port == 0) {
         return PROVISION_CONFIG_INVALID_MQTT_PORT;
     }
-    if (config->mqtt_tls && !string_field_present(config->mqtt_ca, PROVISION_MQTT_CA_MAX)) {
-        return PROVISION_CONFIG_TLS_CA_REQUIRED;
-    }
+    /* A blank CA with TLS enabled is valid: the client then verifies against
+     * the root certificate bundle built into the firmware. */
     if (!string_field_present(config->mqtt_client_id, PROVISION_MQTT_CLIENT_ID_MAX)) {
         return PROVISION_CONFIG_MISSING_MQTT_CLIENT_ID;
     }

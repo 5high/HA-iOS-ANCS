@@ -44,11 +44,13 @@ void test_provision_config_requires_wifi_and_mqtt(void)
 
 void test_tls_requires_ca(void)
 {
+    /* A blank CA with TLS enabled is valid: the client falls back to the
+     * root certificate bundle built into the firmware. */
     provision_config_t config = valid_config();
     config.mqtt_tls = true;
     config.mqtt_ca[0] = '\0';
 
-    TEST_ASSERT_EQUAL(PROVISION_CONFIG_TLS_CA_REQUIRED, provision_config_validate(&config));
+    TEST_ASSERT_EQUAL(PROVISION_CONFIG_OK, provision_config_validate(&config));
 
     strcpy(config.mqtt_ca, "-----BEGIN CERTIFICATE-----\nca\n-----END CERTIFICATE-----");
     TEST_ASSERT_EQUAL(PROVISION_CONFIG_OK, provision_config_validate(&config));

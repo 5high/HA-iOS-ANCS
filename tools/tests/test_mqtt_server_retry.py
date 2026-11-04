@@ -429,7 +429,8 @@ int main(void)
     assert(provision_config_merge_preserving_secrets(&with_ca, &blank_ca, &merged) == ESP_OK);
     assert(strcmp(merged.mqtt_ca, "-----BEGIN CERTIFICATE-----old") == 0);
     assert(provision_config_merge_preserving_secrets_ex(&with_ca, &blank_ca, true, &merged)
-           == PROVISION_CONFIG_TLS_CA_REQUIRED); /* TLS on with no CA is rejected. */
+           == ESP_OK); /* Clearing the CA falls back to the built-in bundle. */
+    assert(merged.mqtt_ca[0] == '\0');
     blank_ca.mqtt_tls = false;
     assert(provision_config_merge_preserving_secrets(&with_ca, &blank_ca, &merged) == ESP_OK);
     assert(merged.mqtt_ca[0] == '\0');

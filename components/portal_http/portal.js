@@ -10,10 +10,10 @@ const PORTAL_LANG = (typeof navigator === 'undefined' ||
 const PORTAL_EN = {
   "Base topic 格式不正确：用 / 分隔的多段路径，每段不能为空，不能以 / 开头或结尾，不能使用 + 或 #。例如 u/marcozy@163.com/ancs。": 'Invalid base topic: a slash-separated path where no segment is empty, it does not start or end with /, and + or # are not allowed. Example: u/marcozy@163.com/ancs.',
   "Client ID 只能包含字母、数字、下划线 _ 和连字符 -（Home Assistant Discovery 要求）。": 'The client ID may only contain letters, digits, underscores _ and hyphens - (required by Home Assistant Discovery).',
-  "开启了 TLS 但没有 CA 证书。mqtt.5high.top 用的是公共 CA（ZeroSSL）签发的证书：ESP32 固件内置了公共根证书，请把「CA 证书 PEM」留空再保存；若之前存过错误证书，清空此栏并关闭 TLS 即可清除。": 'TLS is enabled but no CA certificate was provided. mqtt.5high.top uses a public (ZeroSSL) certificate and this firmware ships with the public root bundle built in: leave the "CA certificate PEM" field empty and save again. If a wrong certificate was stored before, clear this field and turn TLS off to remove it.',
+  "CA 证书校验未通过。公共 CA（Let\'s Encrypt/ZeroSSL）签发的证书可把「CA 证书 PEM」留空，固件会用内置公共根证书；自签名证书请粘贴对应 CA。": 'CA validation failed. For certificates issued by a public CA (Let\'s Encrypt/ZeroSSL), leave the "CA certificate PEM" field empty and the firmware will use its built-in public root bundle; for self-signed certificates, paste the matching CA.',
   "此操作只能在设备热点内进行：请连接 Wi-Fi「IOS-ANCS-SETUP」热点后打开 192.168.4.1 再试。当前是通过局域网地址访问的，出于安全考虑（防止办公室内其他人远程抢绑 iPhone），设备只接受来自自身热点的请求。": 'This action only works over the device hotspot. Connect to the "IOS-ANCS-SETUP" Wi-Fi, open 192.168.4.1 in your browser, and try again. You are reaching the device via its LAN address, and for security (so nobody else in the office can remotely claim the iPhone pairing) it only accepts requests from its own hotspot.',
   "保存失败：配置校验未通过。开启 TLS 时必须提供 CA 证书；想清除旧证书请清空 CA 栏并关闭 TLS。": 'Save failed: the settings did not pass validation. With TLS enabled a CA certificate is required; to clear an old certificate, empty the CA field and turn TLS off.',
-  "已保存 CA 证书。留空并保存 = 保留；想清除就清空此栏并关闭 TLS，或贴入新证书替换。": 'A CA certificate is stored. Leave blank and save to keep it; to clear it, empty this field and turn TLS off, or paste a replacement certificate.',
+  "已保存 CA 证书。留空并保存 = 保留；清空此栏将改用固件内置公共根证书（适合 Let\'s Encrypt/ZeroSSL 等公共证书），贴入新证书则替换。": 'A CA certificate is stored. Leave blank and save to keep it; clearing the field switches to the firmware built-in public root bundle (for Let\'s Encrypt/ZeroSSL and similar), or paste a new certificate to replace it.',
   "연결된 적이 있는 MQTT 서버의 주소나 포트를 바꾸면 저장된 비밀번호를 새 서버로 보내지 않습니다. MQTT 비밀번호를 다시 입력하세요.": 'When you change the address or port of an MQTT server that connected before, re-enter the MQTT password.',
   "확인 중": 'Checking',
   "iPhone 기기 등록": 'Enroll iPhone',
@@ -148,7 +148,7 @@ const API_ERROR_MESSAGES = {
   invalid_mqtt_client_id:
     t('Client ID 只能包含字母、数字、下划线 _ 和连字符 -（Home Assistant Discovery 要求）。'),
   tls_ca_required:
-    t('开启了 TLS 但没有 CA 证书。mqtt.5high.top 用的是公共 CA（ZeroSSL）签发的证书：ESP32 固件内置了公共根证书，请把「CA 证书 PEM」留空再保存；若之前存过错误证书，清空此栏并关闭 TLS 即可清除。'),
+    t('CA 证书校验未通过。公共 CA（Let\'s Encrypt/ZeroSSL）签发的证书可把「CA 证书 PEM」留空，固件会用内置公共根证书；自签名证书请粘贴对应 CA。'),
   'AP interface required':
     t('此操作只能在设备热点内进行：请连接 Wi-Fi「IOS-ANCS-SETUP」热点后打开 192.168.4.1 再试。当前是通过局域网地址访问的，出于安全考虑（防止办公室内其他人远程抢绑 iPhone），设备只接受来自自身热点的请求。'),
 };
@@ -321,7 +321,7 @@ function hydrateForm(status, apName, deviceFamily) {
   $('mqtt-base-topic').value =
     config.mqtt_base_topic || recommendedBaseTopic(apName, deviceFamily);
   $('mqtt-ca').placeholder = config.mqtt_ca_configured
-    ? t('已保存 CA 证书。留空并保存 = 保留；想清除就清空此栏并关闭 TLS，或贴入新证书替换。')
+    ? t('已保存 CA 证书。留空并保存 = 保留；清空此栏将改用固件内置公共根证书（适合 Let\'s Encrypt/ZeroSSL 等公共证书），贴入新证书则替换。')
     : '-----BEGIN CERTIFICATE-----';
   formHydrated = true;
 }
@@ -446,8 +446,8 @@ function applyStatus(status) {
     ? t('已保存密码。仅在需要修改时重新输入。更改曾成功连接过的服务器地址或端口时必须重新输入。')
     : t('Broker 无密码请留空。');
   $('mqtt-ca-help').textContent = config.mqtt_ca_configured
-    ? t('已保存 CA 证书。仅在需要更换时重新输入。')
-    : t('开启 TLS 需要提供 CA 证书。');
+    ? t('已保存 CA 证书。仅在需要更换时重新输入；清空并保存将改用固件内置公共根证书。')
+    : t('可留空：TLS 默认使用固件内置的公共根证书（Let\'s Encrypt/ZeroSSL 等）。仅自签名证书需要粘贴 CA。');
   toggleTlsField();
 }
 
