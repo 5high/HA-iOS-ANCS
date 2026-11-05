@@ -6,7 +6,7 @@ const boards = {
     validation: "v0.4.1 build verified",
     status: "BUILD VERIFIED",
     description: "v0.4.1 ANCS-to-MQTT factory build for the ESP32/WROOM-32 family.",
-    hash: "SHA256 8EFE2FBF971A",
+    hash: "SHA256 4E706EDFA356",
   },
   esp32c2: {
     chip: "C2",
@@ -33,7 +33,7 @@ const boards = {
     validation: "v0.4.1 build verified",
     status: "BUILD VERIFIED",
     description: "v0.4.1 ANCS-to-MQTT factory build for the ESP32-C5 family.",
-    hash: "SHA256 4D8B7BFC10AB",
+    hash: "SHA256 AE36F8ECFDE1",
   },
   esp32c6: {
     chip: "C6",

@@ -47,8 +47,14 @@ def main() -> None:
     base = f"ios-ancs-{args.target}-v{version}"
     factory = output / f"{base}.factory.bin"
     settings = config["flash_settings"]
+    # merge-bin defaults --target-offset to 0x0, which only suits chips whose
+    # ROM boots from flash offset 0. Classic ESP32 (0x1000) and ESP32-C5
+    # (0x2000) need the real boot offset or the merged image starts with
+    # 0xFF padding and the ROM rejects it ("Invalid image block").
+    boot_offset = min(flash_files[0::2], key=lambda o: int(o, 16))
     subprocess.run([
         sys.executable, "-m", "esptool", "--chip", args.target, "merge-bin", "-o", str(factory),
+        "--target-offset", boot_offset,
         "--flash-mode", settings["flash_mode"], "--flash-size", "4MB",
         "--flash-freq", settings["flash_freq"], *flash_files,
     ], check=True)
