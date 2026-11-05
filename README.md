@@ -71,11 +71,11 @@ iPhone → BLE ANCS → ESP32 → Wi-Fi/MQTT → Home Assistant
 
 通过设置门户的 **注册 iPhone 设备** 按钮、Home Assistant 的 **开始 iPhone 注册** 按钮或长按 BOOT 3 秒打开 120 秒注册窗口。在 iOS 蓝牙设置中输入设置门户显示的正确固定 PIN `654321`，并允许通知共享。若已有保存的 iPhone 配对信息，同样的动作只会请求重连已注册的 iPhone。
 
-## 支持板型与 v0.4.1 构建事实
+## 支持板型与 v0.4.2 构建事实
 
 通用固件使用最小 4 MB 闪存布局。ESP32-S2 无 BLE、ESP32-H2 无 Wi-Fi、ESP32-P4 无内置 Wi-Fi/BLE 射频，因此不在支持之列。
 
-| Target | 常见模块/板型 | Factory 镜像 | v0.4.1 状态 |
+| Target | 常见模块/板型 | Factory 镜像 | v0.4.2 状态 |
 | --- | --- | ---: | --- |
 | `esp32` | ESP32-WROOM-32 / WROOM-D32 | 1,496,480 bytes | 构建已验证 · 本版本未实机验证 |
 | `esp32c2` | ESP32-C2 | 1,499,888 bytes | 构建已验证 · 本版本未实机验证（本版本起无板载 RGB，RMT 缺失自动禁用） |
@@ -85,7 +85,7 @@ iPhone → BLE ANCS → ESP32 → Wi-Fi/MQTT → Home Assistant
 | `esp32c61` | ESP32-C61 | 1,777,184 bytes | 构建已验证 · 本版本未实机验证（本版本起无板载 RGB，RMT 缺失自动禁用） |
 | `esp32s3` | ESP32-S3 | 1,485,984 bytes | 构建已验证 · 本版本已实机刷写（DevKitC-1 v1.0：单颗 WS2812 通知灯效、配置保存修复） |
 
-表中状态基于本地 v0.4.1 构建（CI 矩阵同配置）。构建验证、实机刷写、BLE 注册、iPhone 通知接收是不同层级的验证；没有实机结果的板型只标注构建已验证。
+表中状态基于本地 v0.4.2 构建（CI 矩阵同配置）。构建验证、实机刷写、BLE 注册、iPhone 通知接收是不同层级的验证；没有实机结果的板型只标注构建已验证。
 
 ## Home Assistant 与 HACS
 

@@ -47,7 +47,7 @@ From firmware 0.4.0 the relay remembers MQTT settings once they have connected.
 
 ## Supported Boards And v0.4.0 Build Facts
 
-The shared firmware uses a 4 MB minimum flash layout. All v0.4.1 images shown in the installer are compile, link, partition, and merged-image verified. ESP32-S2 is excluded because it has no BLE. ESP32-H2 is excluded because it has no Wi-Fi, and ESP32-P4 has no integrated Wi-Fi/BLE radio.
+The shared firmware uses a 4 MB minimum flash layout. All v0.4.2 images shown in the installer are compile, link, partition, and merged-image verified. ESP32-S2 is excluded because it has no BLE. ESP32-H2 is excluded because it has no Wi-Fi, and ESP32-P4 has no integrated Wi-Fi/BLE radio.
 
 | Target | Typical module/board | Factory image | v0.4.0 status |
 | --- | --- | ---: | --- |
