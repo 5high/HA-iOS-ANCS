@@ -27,7 +27,7 @@ def render_relay_status(system: dict) -> dict:
   "sta_started": True,
   "sta_connecting": False,
   "sta_has_ip": True,
-  "ap_ssid": "iOS-MSG-ABC123",
+  "ap_ssid": "iOSMSG-ABC123",
         },
         "system": system,
     }

@@ -11,7 +11,7 @@ const PORTAL_EN = {
   "Base topic 格式不正确：用 / 分隔的多段路径，每段不能为空，不能以 / 开头或结尾，不能使用 + 或 #。例如 u/marcozy@163.com/ancs。": 'Invalid base topic: a slash-separated path where no segment is empty, it does not start or end with /, and + or # are not allowed. Example: u/marcozy@163.com/ancs.',
   "Client ID 只能包含字母、数字、下划线 _ 和连字符 -（Home Assistant Discovery 要求）。": 'The client ID may only contain letters, digits, underscores _ and hyphens - (required by Home Assistant Discovery).',
   "CA 证书校验未通过。公共 CA（Let\'s Encrypt/ZeroSSL）签发的证书可把「CA 证书 PEM」留空，固件会用内置公共根证书；自签名证书请粘贴对应 CA。": 'CA validation failed. For certificates issued by a public CA (Let\'s Encrypt/ZeroSSL), leave the "CA certificate PEM" field empty and the firmware will use its built-in public root bundle; for self-signed certificates, paste the matching CA.',
-  "此操作只能在设备热点内进行：请连接 Wi-Fi「iOS-MSG-XXXXXX」热点后打开 192.168.4.1 再试。当前是通过局域网地址访问的，出于安全考虑（防止办公室内其他人远程抢绑 iPhone），设备只接受来自自身热点的请求。": 'This action only works over the device hotspot. Connect to the "iOS-MSG-XXXXXX" Wi-Fi, open 192.168.4.1 in your browser, and try again. You are reaching the device via its LAN address, and for security (so nobody else in the office can remotely claim the iPhone pairing) it only accepts requests from its own hotspot.',
+  "此操作只能在设备热点内进行：请连接 Wi-Fi「iOSMSG-XXXXXX」热点后打开 192.168.4.1 再试。当前是通过局域网地址访问的，出于安全考虑（防止办公室内其他人远程抢绑 iPhone），设备只接受来自自身热点的请求。": 'This action only works over the device hotspot. Connect to the "iOSMSG-XXXXXX" Wi-Fi, open 192.168.4.1 in your browser, and try again. You are reaching the device via its LAN address, and for security (so nobody else in the office can remotely claim the iPhone pairing) it only accepts requests from its own hotspot.',
   "保存失败：配置校验未通过，请检查上方各字段格式（Broker 地址、端口、Client ID、Base topic 等）。": 'Save failed: the settings did not pass validation. Check the field formats above (broker address, port, client ID, base topic, etc.).',
   "已保存 CA 证书。留空并保存 = 保留；清空此栏将改用固件内置公共根证书（适合 Let\'s Encrypt/ZeroSSL 等公共证书），贴入新证书则替换。": 'A CA certificate is stored. Leave blank and save to keep it; clearing the field switches to the firmware built-in public root bundle (for Let\'s Encrypt/ZeroSSL and similar), or paste a new certificate to replace it.',
   "연결된 적이 있는 MQTT 서버의 주소나 포트를 바꾸면 저장된 비밀번호를 새 서버로 보내지 않습니다. MQTT 비밀번호를 다시 입력하세요.": 'When you change the address or port of an MQTT server that connected before, re-enter the MQTT password.',
@@ -150,7 +150,7 @@ const API_ERROR_MESSAGES = {
   tls_ca_required:
     t('CA 证书校验未通过。公共 CA（Let\'s Encrypt/ZeroSSL）签发的证书可把「CA 证书 PEM」留空，固件会用内置公共根证书；自签名证书请粘贴对应 CA。'),
   'AP interface required':
-    t('此操作只能在设备热点内进行：请连接 Wi-Fi「iOS-MSG-XXXXXX」热点后打开 192.168.4.1 再试。当前是通过局域网地址访问的，出于安全考虑（防止办公室内其他人远程抢绑 iPhone），设备只接受来自自身热点的请求。'),
+    t('此操作只能在设备热点内进行：请连接 Wi-Fi「iOSMSG-XXXXXX」热点后打开 192.168.4.1 再试。当前是通过局域网地址访问的，出于安全考虑（防止办公室内其他人远程抢绑 iPhone），设备只接受来自自身热点的请求。'),
 };
 
 async function api(path, options = {}) {
@@ -175,7 +175,7 @@ function deviceSuffix(apSsid) {
 }
 
 function iphoneBluetoothName(apSsid, deviceFamily) {
-  return `iOS-MSG-${deviceSuffix(apSsid).toUpperCase()}`;
+  return `iOSMSG-${deviceSuffix(apSsid).toUpperCase()}`;
 }
 
 function recommendedClientId(apSsid, deviceFamily) {
@@ -345,7 +345,7 @@ function applyStatus(status) {
   const config = status.config || {};
   const target = String(status.target || 'esp32c6').toLowerCase();
   const deviceFamily = String(status.device_family || 'C6').toUpperCase();
-  const apName = runtime.ap_ssid || 'iOS-MSG';
+  const apName = runtime.ap_ssid || 'iOSMSG';
   const bluetoothName = iphoneBluetoothName(apName, deviceFamily);
   const passkeyValue = Number(system.ble_passkey || 0);
   const blePasskey = Number.isInteger(passkeyValue) &&
