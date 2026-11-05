@@ -1,7 +1,7 @@
-9cacc19d38f0f212c989b09fa76a9fd613d5ad67d8ddd99230821d0fa87a4ad3  docs/firmware/esp32/ios-ancs-esp32-v0.4.1.factory.bin
-e0b6d3926d4ef994f9a93dfd21e3a18f1b735d7650c72ffb1072e5be3208c3d7  docs/firmware/esp32c2/ios-ancs-esp32c2-v0.4.1.factory.bin
-1d493ae7d240b79cdac1aef537e5df889987cb099bfbea3e54ed013b80cff13c  docs/firmware/esp32c3/ios-ancs-esp32c3-v0.4.1.factory.bin
-a551acbfaa2f925ab1e4f0d1913518bda03e1fea879abc230c46a7772831332b  docs/firmware/esp32c5/ios-ancs-esp32c5-v0.4.1.factory.bin
-32c4a0b4fa4adbab07a08a2649eef3d0bae77990bcabed3613a307270046a64c  docs/firmware/esp32c6/ios-ancs-esp32c6-v0.4.1.factory.bin
-9c3c17835fbd90970dfa5548b00544dc3b60254866f385064e4aa50703d02d6f  docs/firmware/esp32c61/ios-ancs-esp32c61-v0.4.1.factory.bin
-1771ddfb33be89b5394136a8b56271ee4fe3ae131826eddd5a84fdc65b71e4bb  docs/firmware/esp32s3/ios-ancs-esp32s3-v0.4.1.factory.bin
+8efe2fbf971ae2b988d3ed156fbf4ce873fe06498a5a36a36abb2895b7161377  docs/firmware/esp32/ios-ancs-esp32-v0.4.1.factory.bin
+cdcb6b9835c95549dcf9db740a74be0729554d184ebbb0a05635d8265f645438  docs/firmware/esp32c2/ios-ancs-esp32c2-v0.4.1.factory.bin
+395cf00ad382f0dc1a53199fbef36a1f8970631aee6623b33bab73000778b0c5  docs/firmware/esp32c3/ios-ancs-esp32c3-v0.4.1.factory.bin
+4d8b7bfc10ab96c503875c03ea01b7f04e95f067eaf5cfff594b471e752a9361  docs/firmware/esp32c5/ios-ancs-esp32c5-v0.4.1.factory.bin
+819c7103c113147b99ba471b7ee4e02cefa44e9be71657581096deb3f998a944  docs/firmware/esp32c6/ios-ancs-esp32c6-v0.4.1.factory.bin
+eac7f4278c7505df12eda6ee30be0bb94b652ea4ecf13c895fce0c9c4c3b4ed3  docs/firmware/esp32c61/ios-ancs-esp32c61-v0.4.1.factory.bin
+9f817dd35aa61303a1c02ffb3e183a375f8214288e407f075385610358c5ae1c  docs/firmware/esp32s3/ios-ancs-esp32s3-v0.4.1.factory.bin
