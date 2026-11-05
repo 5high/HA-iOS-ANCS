@@ -6,7 +6,7 @@ const boards = {
     validation: "v0.4.2 build verified",
     status: "BUILD VERIFIED",
     description: "v0.4.2 ANCS-to-MQTT factory build for the ESP32/WROOM-32 family.",
-    hash: "SHA256 6AB81D189BA4",
+    hash: "SHA256 432F32F718A6",
   },
   esp32c2: {
     chip: "C2",
@@ -15,7 +15,7 @@ const boards = {
     validation: "v0.4.2 build verified",
     status: "BUILD VERIFIED",
     description: "v0.4.2 ANCS-to-MQTT factory build for the ESP32-C2 family.",
-    hash: "SHA256 561C3A187662",
+    hash: "SHA256 F5002A46E611",
   },
   esp32c3: {
     chip: "C3",
@@ -24,7 +24,7 @@ const boards = {
     validation: "v0.4.2 build verified",
     status: "BUILD VERIFIED",
     description: "v0.4.2 ANCS-to-MQTT factory build for the ESP32-C3 family.",
-    hash: "SHA256 E39CB5F6CD30",
+    hash: "SHA256 C8E52B4A6EDF",
   },
   esp32c5: {
     chip: "C5",
@@ -33,7 +33,7 @@ const boards = {
     validation: "v0.4.2 build verified",
     status: "BUILD VERIFIED",
     description: "v0.4.2 ANCS-to-MQTT factory build for the ESP32-C5 family.",
-    hash: "SHA256 438328EF126D",
+    hash: "SHA256 79A4AA8EBAF1",
   },
   esp32c6: {
     chip: "C6",
@@ -42,7 +42,7 @@ const boards = {
     validation: "v0.4.2 build verified",
     status: "BUILD VERIFIED",
     description: "v0.4.2 ANCS-to-MQTT factory build for the ESP32-C6 family.",
-    hash: "SHA256 1444A9595FD7",
+    hash: "SHA256 21A84F8BB923",
   },
   esp32c61: {
     chip: "C61",
@@ -52,7 +52,7 @@ const boards = {
     status: "BUILD VERIFIED",
     description:
       "The ESP32-C61 is a separate newer chip, not a revision of the ESP32-C6. Select it only when the board is actually marked C61.",
-    hash: "SHA256 26A2212354BE",
+    hash: "SHA256 C5E65DBF8CE6",
   },
   esp32s3: {
     chip: "S3",
@@ -61,7 +61,7 @@ const boards = {
     validation: "v0.4.2 build verified",
     status: "BUILD VERIFIED",
     description: "v0.4.2 ANCS-to-MQTT factory build for the ESP32-S3 family.",
-    hash: "SHA256 0EF291AB84F7",
+    hash: "SHA256 46588C203C36",
   },
 };
 
