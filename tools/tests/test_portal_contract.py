@@ -34,6 +34,8 @@ def render_portal_status(status):
             removeAttribute() {{}},
           }};
         }}
+        // contract fixtures assert the Chinese base copy; pin browser language to zh
+        Object.defineProperty(global, 'navigator', {{ value: {{ language: 'zh-CN' }} }});
         global.document = {{
           getElementById(id) {{
             if (!elements.has(id)) elements.set(id, makeElement());
@@ -108,6 +110,8 @@ def render_portal_ble_status(system_overrides):
             removeAttribute() {{}},
           }};
         }}
+        // contract fixtures assert the Chinese base copy; pin browser language to zh
+        Object.defineProperty(global, 'navigator', {{ value: {{ language: 'zh-CN' }} }});
         global.document = {{
           getElementById(id) {{
             if (!elements.has(id)) elements.set(id, makeElement());
