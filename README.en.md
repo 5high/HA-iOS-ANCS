@@ -32,7 +32,7 @@ The project bridges iOS notifications into local Home Assistant automations thro
 5. Without leaving `http://192.168.4.1`, press **Enroll iPhone** in the setup portal to open the 120-second enrollment window. The Home Assistant **Start iPhone enrollment** button and holding BOOT for 3 seconds remain available alternatives.
 6. Read the fixed PIN `123456` shown in the setup portal, select the device in iOS Bluetooth settings, enter the code, and allow notification sharing. Verify that `Recent notification` and `App name` update in Home Assistant.
 
-`XXXX` is the last four hexadecimal digits of the base Wi-Fi MAC address. The SSID uses uppercase hex and the password uses the same suffix in lowercase. The generic form is `ancs-<lowercase_suffix>`, and it is not a model number.
+`XXXX` is the last four hexadecimal digits of the base Wi-Fi MAC address. The SSID uses uppercase hex and the password uses the same suffix in lowercase. The generic form is `iosmsg-<lowercase_suffix>`, and it is not a model number.
 
 Holding BOOT for 3 seconds opens the setup AP or iPhone enrollment recovery window. If a BLE bond already exists, enrollment actions request reconnect to the known iPhone only and do not allow a new phone to pair.
 

@@ -16,7 +16,7 @@ Developer examples use `COMx` on Windows and `/dev/ttyACM0` on Linux. Replace th
 
 - Expected SSID: `iOSMSG-XXXX`.
 - Expected password: `iosmsg-xxxx`.
-- `XXXX` is the last four hexadecimal digits of the base Wi-Fi MAC address, uppercase in the SSID and lowercase in the password. The generic form is `ancs-<lowercase_suffix>`, and it is not a model number.
+- `XXXX` is the last four hexadecimal digits of the base Wi-Fi MAC address, uppercase in the SSID and lowercase in the password. The generic form is `iosmsg-<lowercase_suffix>`, and it is not a model number.
 - Infrastructure Wi-Fi passwords are case-sensitive and stored exactly as entered.
 - Verify the board is powered and the flash completed.
 - Hold BOOT for 3 seconds to open the recovery window.

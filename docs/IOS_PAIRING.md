@@ -10,7 +10,7 @@ This device uses explicit BLE enrollment. It does not advertise for a new iPhone
 4. Save Wi-Fi and MQTT settings. The portal stores only Wi-Fi and MQTT configuration.
 5. Keep the setup portal open. It now provides an **Enroll iPhone** button and shows the fixed PIN `654321` while enrollment is open. Home Assistant MQTT Discovery also creates an **Start iPhone enrollment** button after MQTT connects.
 
-`XXXX` is the last four hexadecimal digits of the base Wi-Fi MAC address. Use uppercase in the SSID and lowercase in the password. The generic form is `ancs-<lowercase_suffix>`, and it is not a model number. Infrastructure Wi-Fi passwords are case-sensitive and stored exactly as entered.
+`XXXX` is the last four hexadecimal digits of the base Wi-Fi MAC address. Use uppercase in the SSID and lowercase in the password. The generic form is `iosmsg-<lowercase_suffix>`, and it is not a model number. Infrastructure Wi-Fi passwords are case-sensitive and stored exactly as entered.
 
 ## Pair An iPhone
 

@@ -50,13 +50,13 @@ iPhone → BLE ANCS → ESP32 → Wi-Fi/MQTT → Home Assistant
 5. 不离开 `http://192.168.4.1` 设置门户，点击 **注册 iPhone 设备** 打开 120 秒注册窗口。Home Assistant 的 **开始 iPhone 注册** 按钮和长按 BOOT 3 秒也能打开同一个注册窗口。
 6. 查看设置门户显示的正确固定 PIN `654321`，在 iOS 蓝牙设置中选择设备并输入该码，允许通知共享；确认 Home Assistant 中 `最近通知` 和 `App 名称` 传感器已更新。
 
-`XXXX` 是开发板基础 Wi-Fi MAC 地址的最后 4 位十六进制：SSID 使用大写，密码使用同一后缀的小写。通用形式为 `ancs-<lowercase_suffix>`，示例不是型号编号。基础设施 Wi-Fi 密码按原样保存，区分大小写（case-sensitive）。
+`XXXX` 是开发板基础 Wi-Fi MAC 地址的最后 4 位十六进制：SSID 使用大写，密码使用同一后缀的小写。密码通用形式为 `iosmsg-<lowercase_suffix>`，示例不是型号编号。基础设施 Wi-Fi 密码按原样保存，区分大小写（case-sensitive）。
 
 长按 BOOT 按钮 3 秒可打开设置 AP 或 iPhone 注册窗口。若已存在保存的 iPhone 配对信息（bond），注册动作只会请求重连已知 iPhone，不允许新手机配对。
 
 ## Wi-Fi 与 MQTT 设置
 
-设置 AP 和 `http://192.168.4.1` 门户只保存 Wi-Fi 与 MQTT 设置。`iOSMSG-XXXX` 的 `XXXX` 是基础 Wi-Fi MAC 地址最后 4 位：SSID 用大写，`iosmsg-xxxx`（通用形式 `ancs-<lowercase_suffix>`）密码用小写。Home Assistant 设备由 MQTT Discovery 创建。
+设置 AP 和 `http://192.168.4.1` 门户只保存 Wi-Fi 与 MQTT 设置。`iOSMSG-XXXX` 的 `XXXX` 是基础 Wi-Fi MAC 地址最后 4 位：SSID 用大写，`iosmsg-xxxx`（通用形式 `iosmsg-<lowercase_suffix>`）密码用小写。Home Assistant 设备由 MQTT Discovery 创建。
 
 从固件 0.4.0 起，MQTT 服务器一旦连接成功，设置就会被记住。
 
