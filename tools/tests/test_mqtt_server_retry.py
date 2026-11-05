@@ -419,20 +419,23 @@ int main(void)
     assert(provision_config_merge_preserving_secrets(&stored, &update, &update) == ESP_OK);
     assert(strcmp(update.mqtt_password, "mqtt-secret") == 0);
 
-    /* A stored CA survives a blank CA field while TLS stays enabled, and an
-     * explicit clear flag (or turning TLS off) wipes it. */
+    /* A blank CA field always clears the stored CA (empty box = use the
+     * firmware built-in root bundle); only an absent mqtt_ca key, i.e.
+     * clear_mqtt_ca == false, preserves it for PATCH-style partial updates. */
     provision_config_t with_ca = base();
     with_ca.mqtt_tls = true;
     strcpy(with_ca.mqtt_ca, "-----BEGIN CERTIFICATE-----old");
     provision_config_t blank_ca = base();
     blank_ca.mqtt_tls = true;
-    assert(provision_config_merge_preserving_secrets(&with_ca, &blank_ca, &merged) == ESP_OK);
+    assert(provision_config_merge_preserving_secrets_ex(&with_ca, &blank_ca, false, &merged) == ESP_OK);
     assert(strcmp(merged.mqtt_ca, "-----BEGIN CERTIFICATE-----old") == 0);
+    assert(provision_config_merge_preserving_secrets_ex(&with_ca, &blank_ca, false, &merged)
+           == ESP_OK); /* An absent mqtt_ca key keeps the stored CA. */
+    assert(strcmp(merged.mqtt_ca, "-----BEGIN CERTIFICATE-----old") == 0);
+    /* An explicit clear request (clear_mqtt_ca=true) wipes the stored CA so
+     * TLS falls back to the built-in bundle. */
     assert(provision_config_merge_preserving_secrets_ex(&with_ca, &blank_ca, true, &merged)
-           == ESP_OK); /* Clearing the CA falls back to the built-in bundle. */
-    assert(merged.mqtt_ca[0] == '\0');
-    blank_ca.mqtt_tls = false;
-    assert(provision_config_merge_preserving_secrets(&with_ca, &blank_ca, &merged) == ESP_OK);
+           == ESP_OK);
     assert(merged.mqtt_ca[0] == '\0');
 
     /* The verified marker round-trips and is erased with the settings. */
