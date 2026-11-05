@@ -31,7 +31,7 @@ HACS 只更新集成。固件请在[安装页面](https://5high.github.io/HA-iOS
 
 ## 当前保护范围
 
-- 为了便于安装，设置 AP 使用固定规则：名称为 `IOS-ANCS-SETUP-XXXXXX`，密码是同一末 6 位的小写形式 `ancs-xxxxxx`。
+- 为了便于安装，设置 AP 使用固定规则：名称为 `iOSMSG-XXXXXX`，密码是同一末 6 位的小写形式 `iosmsg-xxxxxx`。
 - 以下情况会打开设置 AP。开启期间，任何知道该名称的附近人员都可能接入并修改设置：
   - 首次安装时
   - Wi-Fi 断连超过 45 秒时
