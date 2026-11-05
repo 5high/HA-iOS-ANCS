@@ -20,7 +20,16 @@
 #include "freertos/task.h"
 #include "lwip/inet.h"
 
+/* Channel 1: the office 2.4 GHz RF is dominated by ch6/ch11 corporate
+ * APs; a lone softAP beacon on ch6 gets buried and client scans miss it
+ * entirely (3 devices blind, board TX proven via channel census). */
+#if defined(PROVISIONING_DEMO_ALT_CHANNEL)
 #define PROVISIONING_AP_CHANNEL 6
+#elif defined(PROVISIONING_DEMO_CH13)
+#define PROVISIONING_AP_CHANNEL 13
+#else
+#define PROVISIONING_AP_CHANNEL 2
+#endif
 #define PROVISIONING_AP_MAX_CLIENTS 2
 #define PROVISIONING_STA_FAILURE_RETRY_COUNT 5
 #define PROVISIONING_STA_MIN_RSSI -90
@@ -291,6 +300,15 @@ static esp_err_t make_ap_identity(void)
     return ESP_OK;
 }
 
+/* Diagnostic build switch: PROVISIONING_DEMO_AP_ONLY=1 makes boot go
+ * straight to the provisioning AP, skipping any stored STA config. Lets us
+ * tell "fresh-board AP path broken" from "stored config suppresses the AP". */
+#ifdef PROVISIONING_DEMO_AP_ONLY
+#define PROVISIONING_FORCE_AP_ONLY 1
+#else
+#define PROVISIONING_FORCE_AP_ONLY 0
+#endif
+
 static void fill_ap_config(wifi_config_t *ap_config)
 {
     memset(ap_config, 0, sizeof(*ap_config));
@@ -301,12 +319,28 @@ static void fill_ap_config(wifi_config_t *ap_config)
             s_ap_password,
             sizeof(ap_config->ap.password));
     ap_config->ap.ssid_len = strlen(s_ap_ssid);
+    ap_config->ap.ssid_hidden = 0;  /* explicit broadcast in beacon */
+    ap_config->ap.beacon_interval = 100;  /* fast beaconing for noisy RF */
     ap_config->ap.channel = PROVISIONING_AP_CHANNEL;
     ap_config->ap.max_connection = PROVISIONING_AP_MAX_CLIENTS;
     ap_config->ap.authmode = WIFI_AUTH_WPA2_PSK;
     ap_config->ap.pairwise_cipher = WIFI_CIPHER_TYPE_CCMP;
     ap_config->ap.pmf_cfg.capable = true;
     ap_config->ap.pmf_cfg.required = false;
+#ifdef PROVISIONING_DEMO_NO_PMF_CCMP
+    ap_config->ap.pairwise_cipher = WIFI_CIPHER_TYPE_UNKNOWN;
+    ap_config->ap.pmf_cfg.capable = false;
+#endif
+#ifdef PROVISIONING_DEMO_OPEN_AP
+    /* Diagnostic: open auth, no PMF — most conservative beacon frame. */
+    ap_config->ap.authmode = WIFI_AUTH_OPEN;
+    ap_config->ap.pmf_cfg.capable = false;
+#endif
+#ifdef PROVISIONING_DEMO_5G_CHANNEL
+    /* Diagnostic: clean U-NII-1 channel + 11ax-only so the frame is a
+     * textbook modern HE beacon, far from the corporate 2.4 GHz mesh. */
+    ap_config->ap.channel = 36;
+#endif
 }
 
 static esp_err_t configure_ap_profile_before_wifi_start(void)
@@ -315,15 +349,33 @@ static esp_err_t configure_ap_profile_before_wifi_start(void)
     ESP_RETURN_ON_ERROR(esp_wifi_set_mode(WIFI_MODE_APSTA),
                         TAG,
                         "enable AP config interface");
+#ifdef PROVISIONING_DEMO_5G_CHANNEL
+    ESP_RETURN_ON_ERROR(esp_wifi_set_country(&(wifi_country_t){
+                            .cc = "US", .schan = 1, .nchan = 11,
+                            .policy = WIFI_COUNTRY_POLICY_MANUAL}),
+                        TAG, "country for diag AP");
+    ESP_RETURN_ON_ERROR(
+        esp_wifi_set_protocol(WIFI_IF_AP,
+                              WIFI_PROTOCOL_11A | WIFI_PROTOCOL_11N |
+                              WIFI_PROTOCOL_11AX),
+        TAG, "5G diag protocol");
+#else
     ESP_RETURN_ON_ERROR(
         esp_wifi_set_protocol(
             WIFI_IF_AP,
             WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N),
         TAG,
         "set AP compatibility protocols");
+#endif
     ESP_RETURN_ON_ERROR(esp_wifi_set_bandwidth(WIFI_IF_AP, WIFI_BW20),
                         TAG,
                         "set AP 20 MHz bandwidth");
+#ifdef PROVISIONING_DEMO_LEGACY_TX
+    /* Diagnostic: pure 11b/g AP (no HT/HE rate sets advertised). */
+    ESP_RETURN_ON_ERROR(
+        esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G),
+        TAG, "legacy protocol");
+#endif
 
     wifi_config_t ap_config;
     fill_ap_config(&ap_config);
@@ -629,6 +681,20 @@ static esp_err_t ensure_wifi_started_unlocked(void)
     }
 
     ESP_RETURN_ON_ERROR(esp_wifi_set_mode(WIFI_MODE_NULL), TAG, "set wifi null mode");
+#ifdef PROVISIONING_DEMO_RAW_AP
+    /* Diagnostic minimal AP: plainest possible softAP — default protocol,
+     * open auth, no PMF/cipher/protocol/bandwidth customization. */
+    (void)make_ap_identity();
+    {
+        wifi_config_t raw = {0};
+        raw.ap.channel = 1;
+        raw.ap.max_connection = 4;
+        raw.ap.ssid_len = (uint8_t)strlen(s_ap_ssid);
+        strlcpy((char *)raw.ap.ssid, s_ap_ssid, sizeof(raw.ap.ssid));
+        ESP_RETURN_ON_ERROR(esp_wifi_set_mode(WIFI_MODE_AP), TAG, "raw ap mode");
+        ESP_RETURN_ON_ERROR(esp_wifi_set_config(WIFI_IF_AP, &raw), TAG, "raw ap cfg");
+    }
+#endif
     ESP_RETURN_ON_ERROR(esp_wifi_start(), TAG, "start wifi");
     s_wifi_started = true;
     return ESP_OK;
@@ -693,6 +759,15 @@ esp_err_t provisioning_runtime_init(const provision_config_t *config,
     s_callback_context = context;
     unlock_state();
 
+#if PROVISIONING_FORCE_AP_ONLY
+    (void)config;
+    ESP_LOGW(TAG, "PROVISIONING_DEMO_AP_ONLY build: forcing AP-only boot");
+    esp_err_t ferr = provisioning_runtime_start_ap();
+    if (ferr == ESP_OK) {
+        dispatch_event(PROVISION_EVENT_BOOT_NO_CONFIG);
+    }
+    return ferr;
+#else
     if (provision_config_validate(config) == PROVISION_CONFIG_OK) {
         esp_err_t err = provisioning_runtime_start_sta(config);
         if (err != ESP_OK) {
@@ -709,6 +784,7 @@ esp_err_t provisioning_runtime_init(const provision_config_t *config,
     dispatch_event(PROVISION_EVENT_BOOT_NO_CONFIG);
     return ESP_OK;
 }
+#endif
 
 esp_err_t provisioning_runtime_start_ap(void)
 {
@@ -735,6 +811,18 @@ esp_err_t provisioning_runtime_start_ap(void)
         lock_state();
         s_ap_started = false;
         unlock_state();
+        unlock_wifi_operation();
+        return err;
+    }
+    /* WIFI_PS_MIN_MODEM on a lone softAP throttles beacons in a way some
+     * iPhone/Mac scanners miss entirely (observed with 3 client devices on
+     * a noisy office 2.4 GHz band). Keep the AP beaconing at full rate. */
+    err = esp_wifi_set_ps(WIFI_PS_NONE);
+    if (err != ESP_OK) {
+        lock_state();
+        s_ap_started = false;
+        unlock_state();
+        (void)apply_wifi_mode_unlocked();
         unlock_wifi_operation();
         return err;
     }

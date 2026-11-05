@@ -15,3 +15,7 @@ idf_component_register(
         provisioning
         rgb_led
 )
+
+if(DEFINED ENV{ANCS_DEMO_DELAY_BLE_S})
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE ANCS_DEMO_DELAY_BLE_S=1)
+endif()

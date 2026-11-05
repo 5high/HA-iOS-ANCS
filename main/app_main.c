@@ -1276,6 +1276,11 @@ void app_main(void)
         }
     }
 
+#ifdef ANCS_DEMO_DELAY_BLE_S
+    /* Diagnostic: keep the radio WiFi-only for 5 minutes so client scans
+     * can be run with BLE/coex fully quiet. */
+    vTaskDelay(pdMS_TO_TICKS(300000) / portTICK_PERIOD_MS);
+#endif
     error = ancs_client_init();
     log_error("ANCS client init", error);
     if (error == ESP_OK) {

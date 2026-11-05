@@ -5,11 +5,11 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-CANONICAL_REPO_URL = "https://github.com/1bobby-git/HA-iOS-ANCS"
-CANONICAL_PAGES_URL = "https://1bobby-git.github.io/HA-iOS-ANCS/"
+CANONICAL_REPO_URL = "https://github.com/5high/HA-iOS-ANCS"
+CANONICAL_PAGES_URL = "https://5high.github.io/HA-iOS-ANCS/"
 HACS_MY_LINK = (
     "https://my.home-assistant.io/redirect/hacs_repository/"
-    "?owner=1bobby-git&repository=HA-iOS-ANCS&category=integration"
+    "?owner=5high&repository=HA-iOS-ANCS&category=integration"
 )
 HACS_BADGE_MARKDOWN = (
     "https://my.home-assistant.io/badges/hacs_repository.svg"
@@ -41,7 +41,7 @@ INSTALLER_SECTION_MARKERS = (
     "verify",
 )
 INSTALLER_FACTS = (
-    "iOS-MSG-XXXXXX",
+    "IOSMSG-XXXXXX",
     "iosmsg-xxxxxx",
     "http://192.168.4.1",
     "iPhone 注册开始",

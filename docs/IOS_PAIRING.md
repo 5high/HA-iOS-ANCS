@@ -5,7 +5,7 @@ This device uses explicit BLE enrollment. It does not advertise for a new iPhone
 ## Before Pairing
 
 1. Flash a supported ESP32 board.
-2. Join `iOS-MSG-XXXXXX` with password `iosmsg-xxxxxx`.
+2. Join `IOSMSG-XXXXXX` with password `iosmsg-xxxxxx`.
 3. Open `http://192.168.4.1`.
 4. Save Wi-Fi and MQTT settings. The portal stores only Wi-Fi and MQTT configuration.
 5. Keep the setup portal open. It now provides an **Enroll iPhone** button and shows the fixed PIN `654321` while enrollment is open. Home Assistant MQTT Discovery also creates an **Start iPhone enrollment** button after MQTT connects.
