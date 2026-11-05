@@ -10,7 +10,7 @@
 | 最新 Release 附带的固件 | 支持 |
 | 更早版本 | 不支持 |
 
-HACS 只更新集成。固件请在[安装页面](https://1bobby-git.github.io/HA-iOS-ANCS/)单独安装。
+HACS 只更新集成。固件请在[安装页面](https://5high.github.io/HA-iOS-ANCS/)单独安装。
 
 ## 漏洞报告
 

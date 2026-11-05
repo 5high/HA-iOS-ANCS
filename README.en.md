@@ -1,6 +1,6 @@
 # Home Assistant iOS ANCS
 
-[Korean](README.md) | [GitHub](https://github.com/1bobby-git/HA-iOS-ANCS) | [Browser installer](https://1bobby-git.github.io/HA-iOS-ANCS/)
+[Korean](README.md) | [GitHub](https://github.com/5high/HA-iOS-ANCS) | [Browser installer](https://5high.github.io/HA-iOS-ANCS/)
 
 Home Assistant iOS ANCS is ESP32 firmware plus an optional Home Assistant companion integration for relaying iPhone notifications into local Home Assistant automation through BLE ANCS and MQTT. MQTT Discovery creates the basic device entities and buttons without HACS. ESP32 firmware is installed with the browser installer or source build tools, not through HACS.
 
@@ -25,7 +25,7 @@ The project bridges iOS notifications into local Home Assistant automations thro
 
 ## Quick Install
 
-1. Open the [browser installer](https://1bobby-git.github.io/HA-iOS-ANCS/) in desktop Chrome or Edge and connect the ESP32 board with a USB data cable.
+1. Open the [browser installer](https://5high.github.io/HA-iOS-ANCS/) in desktop Chrome or Edge and connect the ESP32 board with a USB data cable.
 2. Select the board model and flash the factory image with ESP Web Tools.
 3. Join the board's `IOS-ANCS-SETUP-XXXXXX` Wi-Fi using password `ancs-xxxxxx`.
 4. Open `http://192.168.4.1` and save Wi-Fi and MQTT settings only. The portal does not store Home Assistant or iPhone notification settings.
@@ -65,19 +65,19 @@ The table describes the published v0.4.0 images. Build verification, physical fl
 
 MQTT Discovery works without HACS. After the device connects to the broker, it publishes retained Discovery configs and Home Assistant creates the device, `Recent notification`, `App name`, status sensor, and **Start iPhone enrollment** button.
 
-HACS installs only the Home Assistant companion integration; it never flashes or updates ESP32 firmware. To install as a HACS custom repository, open the [iOS ANCS HACS My Link](https://my.home-assistant.io/redirect/hacs_repository/?owner=1bobby-git&repository=HA-iOS-ANCS&category=integration) and confirm the repository addition in Home Assistant. The integration display name is `iOS ANCS`; the repository name and URL remain `HA-iOS-ANCS` for existing HACS installations. This documents custom-repository installation only; it does not claim default HACS-store acceptance.
+HACS installs only the Home Assistant companion integration; it never flashes or updates ESP32 firmware. To install as a HACS custom repository, open the [iOS ANCS HACS My Link](https://my.home-assistant.io/redirect/hacs_repository/?owner=5high&repository=HA-iOS-ANCS&category=integration) and confirm the repository addition in Home Assistant. The integration display name is `iOS ANCS`; the repository name and URL remain `HA-iOS-ANCS` for existing HACS installations. This documents custom-repository installation only; it does not claim default HACS-store acceptance.
 
 ### HACS Installation
 
 Use the button below to open the HACS custom repository flow in Home Assistant.
 
-[![Open your Home Assistant instance and show the HACS repository.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=1bobby-git&repository=HA-iOS-ANCS&category=integration)
+[![Open your Home Assistant instance and show the HACS repository.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=5high&repository=HA-iOS-ANCS&category=integration)
 
 If the button is unavailable, install it manually:
 
 1. In Home Assistant, open `HACS` → `Integrations`.
 2. Open the `⋮` menu and choose `Custom repositories`.
-3. Enter `https://github.com/1bobby-git/HA-iOS-ANCS` in `Repository`.
+3. Enter `https://github.com/5high/HA-iOS-ANCS` in `Repository`.
 4. Select `Integration` for `Category` and click `Add`.
 5. Install `iOS ANCS`, then restart Home Assistant.
 
@@ -151,4 +151,4 @@ python -m pytest tests -q
 
 ## Changelog
 
-Per-version changes, validation scope and the bundled firmware version are listed in [CHANGELOG.md](CHANGELOG.md) (Korean) and on [GitHub Releases](https://github.com/1bobby-git/HA-iOS-ANCS/releases).
+Per-version changes, validation scope and the bundled firmware version are listed in [CHANGELOG.md](CHANGELOG.md) (Korean) and on [GitHub Releases](https://github.com/5high/HA-iOS-ANCS/releases).

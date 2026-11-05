@@ -3,17 +3,17 @@
   <img src="custom_components/ha_ios_ancs/brand/logo@2x.png" alt="iOS ANCS 标志" width="520">
 </p>
 <p align="center">
-  <a href="https://github.com/1bobby-git/HA-iOS-ANCS/stargazers"><img src="https://img.shields.io/github/stars/1bobby-git/HA-iOS-ANCS?style=flat-square&logo=github&label=Stars" alt="GitHub Stars"></a>
-  <a href="https://github.com/1bobby-git/HA-iOS-ANCS/releases"><img src="https://img.shields.io/github/v/release/1bobby-git/HA-iOS-ANCS?style=flat-square&label=Release" alt="Latest Release"></a>
-  <a href="https://github.com/1bobby-git/HA-iOS-ANCS/blob/main/docs/manifests/ios-ancs.json"><img src="https://img.shields.io/badge/Architecture-ESP32%20family-0ea5e9?style=flat-square" alt="ESP32, ESP32-C2, ESP32-C3, ESP32-C5, ESP32-C6, ESP32-C61, ESP32-S3"></a>
-  <a href="https://github.com/1bobby-git/HA-iOS-ANCS/blob/main/LICENSE"><img src="https://img.shields.io/github/license/1bobby-git/HA-iOS-ANCS?style=flat-square&label=License" alt="License"></a>
-  <a href="https://github.com/1bobby-git/HA-iOS-ANCS/commits/main"><img src="https://img.shields.io/github/last-commit/1bobby-git/HA-iOS-ANCS?style=flat-square&label=Updated" alt="Last Commit"></a>
+  <a href="https://github.com/5high/HA-iOS-ANCS/stargazers"><img src="https://img.shields.io/github/stars/5high/HA-iOS-ANCS?style=flat-square&logo=github&label=Stars" alt="GitHub Stars"></a>
+  <a href="https://github.com/5high/HA-iOS-ANCS/releases"><img src="https://img.shields.io/github/v/release/5high/HA-iOS-ANCS?style=flat-square&label=Release" alt="Latest Release"></a>
+  <a href="https://github.com/5high/HA-iOS-ANCS/blob/main/docs/manifests/ios-ancs.json"><img src="https://img.shields.io/badge/Architecture-ESP32%20family-0ea5e9?style=flat-square" alt="ESP32, ESP32-C2, ESP32-C3, ESP32-C5, ESP32-C6, ESP32-C61, ESP32-S3"></a>
+  <a href="https://github.com/5high/HA-iOS-ANCS/blob/main/LICENSE"><img src="https://img.shields.io/github/license/5high/HA-iOS-ANCS?style=flat-square&label=License" alt="License"></a>
+  <a href="https://github.com/5high/HA-iOS-ANCS/commits/main"><img src="https://img.shields.io/github/last-commit/5high/HA-iOS-ANCS?style=flat-square&label=Updated" alt="Last Commit"></a>
 </p>
 <!-- project-branding:end -->
 
 # Home Assistant iOS ANCS
 
-[English](README.en.md) | [GitHub](https://github.com/1bobby-git/HA-iOS-ANCS) | [浏览器安装页面](https://1bobby-git.github.io/HA-iOS-ANCS/)
+[English](README.en.md) | [GitHub](https://github.com/5high/HA-iOS-ANCS) | [浏览器安装页面](https://5high.github.io/HA-iOS-ANCS/)
 
 Home Assistant iOS ANCS 是一套 ESP32 固件加可选的 Home Assistant 伴侣集成：ESP32 通过蓝牙 (BLE) 将 iPhone 等 iOS 设备的通知，经 MQTT 转发到本地 Home Assistant。仅靠 MQTT Discovery 即可生成基础实体和按钮；HACS 只负责安装 Home Assistant 一侧的集成。ESP32 固件的安装请使用浏览器安装页面或源码构建工具。
 
@@ -43,7 +43,7 @@ iPhone → BLE ANCS → ESP32 → Wi-Fi/MQTT → Home Assistant
 
 ## 快速安装
 
-1. 在桌面版 Chrome 或 Edge 打开 [浏览器安装页面](https://1bobby-git.github.io/HA-iOS-ANCS/)，用 USB 数据线连接 ESP32 开发板。
+1. 在桌面版 Chrome 或 Edge 打开 [浏览器安装页面](https://5high.github.io/HA-iOS-ANCS/)，用 USB 数据线连接 ESP32 开发板。
 2. 选择板子型号，用 ESP Web Tools 刷入 factory 镜像。
 3. 连接开发板发出的 `iOS-MSG-XXXXXX` Wi-Fi，密码 `iosmsg-xxxxxx`。
 4. 在 `http://192.168.4.1` 门户中只保存 Wi-Fi 与 MQTT 设置。该门户不保存 Home Assistant 或 iPhone 通知设置。
@@ -91,19 +91,19 @@ iPhone → BLE ANCS → ESP32 → Wi-Fi/MQTT → Home Assistant
 
 MQTT Discovery 无需 HACS 即可工作。设备连上 MQTT broker 后会发布 retained Discovery 配置，Home Assistant 随即创建设备、`最近通知`、`App 名称`、状态传感器和 `开始 iPhone 注册` 按钮。
 
-HACS 只安装 Home Assistant 伴侣集成，不会安装或更新 ESP32 固件。HACS custom repository 安装：打开 [iOS ANCS HACS My Link](https://my.home-assistant.io/redirect/hacs_repository/?owner=1bobby-git&repository=HA-iOS-ANCS&category=integration)，在 Home Assistant 中确认添加仓库。集成显示名为 `iOS ANCS`；为兼容既有 HACS 安装，仓库名称和 URL 保持 `HA-iOS-ANCS` 不变。本文只描述 custom repository 路径，不声称已注册进 HACS 官方商店。
+HACS 只安装 Home Assistant 伴侣集成，不会安装或更新 ESP32 固件。HACS custom repository 安装：打开 [iOS ANCS HACS My Link](https://my.home-assistant.io/redirect/hacs_repository/?owner=5high&repository=HA-iOS-ANCS&category=integration)，在 Home Assistant 中确认添加仓库。集成显示名为 `iOS ANCS`；为兼容既有 HACS 安装，仓库名称和 URL 保持 `HA-iOS-ANCS` 不变。本文只描述 custom repository 路径，不声称已注册进 HACS 官方商店。
 
 ### HACS 安装
 
 按下下方按钮将打开 Home Assistant 的 HACS 自定义仓库添加页面。
 
-[![在 Home Assistant 中打开 HACS 仓库](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=1bobby-git&repository=HA-iOS-ANCS&category=integration)
+[![在 Home Assistant 中打开 HACS 仓库](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=5high&repository=HA-iOS-ANCS&category=integration)
 
 无法使用按钮时按以下步骤安装。
 
 1. 在 Home Assistant 打开 `HACS` → `Integrations`。
 2. 在右上角 `⋮` 菜单选择 `Custom repositories`。
-3. 在 `Repository` 填入 `https://github.com/1bobby-git/HA-iOS-ANCS`。
+3. 在 `Repository` 填入 `https://github.com/5high/HA-iOS-ANCS`。
 4. 在 `Category` 中选择 `Integration`，然后点击 `Add`。
 5. 安装 `iOS ANCS` 后重启 Home Assistant。
 
@@ -179,4 +179,4 @@ python -m pytest tests -q
 
 ## 变更记录
 
-各版本的变更内容、验证范围以及是否包含固件，见 [CHANGELOG.md](CHANGELOG.md) 和 [GitHub Releases](https://github.com/1bobby-git/HA-iOS-ANCS/releases)。
+各版本的变更内容、验证范围以及是否包含固件，见 [CHANGELOG.md](CHANGELOG.md) 和 [GitHub Releases](https://github.com/5high/HA-iOS-ANCS/releases)。

@@ -21,7 +21,7 @@
 
 基准提交：`0dd19a15d83bd6fb146ec2715afc0372262b3f13`
 
-发布验证运行：https://github.com/1bobby-git/HA-iOS-ANCS/actions/runs/33998792042
+发布验证运行：https://github.com/5high/HA-iOS-ANCS/actions/runs/33998792042
 
 ## 实际 CI 结果
 
