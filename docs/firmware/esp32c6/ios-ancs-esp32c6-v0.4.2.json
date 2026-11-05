@@ -1,0 +1,17 @@
+{
+  "target": "esp32c6",
+  "version": "0.4.2",
+  "source_commit": "ba2d5ff454f2e77ca2b6eb3002de583adfc6f182",
+  "idf_version": "v6.0.2",
+  "factory_file": "ios-ancs-esp32c6-v0.4.2.factory.bin",
+  "factory_sha256": "21a84f8bb923d7e3e01f7f72f98ea64caeb3f1d813f76e5786215d4bc32679b2",
+  "application_file": "ios-ancs-esp32c6-v0.4.2.app.bin",
+  "application_sha256": "caa97fe06c289a55e7fcdddb59888a551b240b7f51dde89c5e285fd452c2d8ae",
+  "firmware_elf_sha256": "578d2ebc28fa4241c6895bc9aeb4dee9df4c9dfe75f567d7784431a52f33eb21",
+  "application_offset": "0x10000",
+  "partition_table_sha256": "796e16e590c9c004a0a515ff9a9277e022202e7518342e3c6b0903f6d73a7cc8",
+  "partition_csv_sha256": "50f12a23e1cd3b2ca36cbbced98d5116bc2ac85e810d5cab89825f1c662b7431",
+  "hardware_validated": false,
+  "bond_persistence_validated": false,
+  "factory_overwrites_nvs": true
+}

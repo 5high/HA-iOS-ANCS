@@ -5,7 +5,7 @@
     {
       "target": "esp32",
       "version": "0.4.2",
-      "source_commit": "78c746fa51e4f26e6e5ec062027105c6a300f480",
+      "source_commit": "ba2d5ff454f2e77ca2b6eb3002de583adfc6f182",
       "idf_version": "v6.0.2",
       "factory_file": "ios-ancs-esp32-v0.4.2.factory.bin",
       "factory_sha256": "432f32f718a61fc0122fe799d16b34e690a1252c0193c72d5ee82152a40b2f43",
@@ -22,7 +22,7 @@
     {
       "target": "esp32c2",
       "version": "0.4.2",
-      "source_commit": "78c746fa51e4f26e6e5ec062027105c6a300f480",
+      "source_commit": "ba2d5ff454f2e77ca2b6eb3002de583adfc6f182",
       "idf_version": "v6.0.2",
       "factory_file": "ios-ancs-esp32c2-v0.4.2.factory.bin",
       "factory_sha256": "f5002a46e611e1110f861bab5b63c3a91b5b0c6a2d510fb0b7ee822fdf819761",
@@ -39,7 +39,7 @@
     {
       "target": "esp32c3",
       "version": "0.4.2",
-      "source_commit": "78c746fa51e4f26e6e5ec062027105c6a300f480",
+      "source_commit": "ba2d5ff454f2e77ca2b6eb3002de583adfc6f182",
       "idf_version": "v6.0.2",
       "factory_file": "ios-ancs-esp32c3-v0.4.2.factory.bin",
       "factory_sha256": "c8e52b4a6edf1b876bc7bb31ee7cd2040218384cb41ab5a2648494848ef159c2",
@@ -56,7 +56,7 @@
     {
       "target": "esp32c5",
       "version": "0.4.2",
-      "source_commit": "78c746fa51e4f26e6e5ec062027105c6a300f480",
+      "source_commit": "ba2d5ff454f2e77ca2b6eb3002de583adfc6f182",
       "idf_version": "v6.0.2",
       "factory_file": "ios-ancs-esp32c5-v0.4.2.factory.bin",
       "factory_sha256": "79a4aa8ebaf1c229af35f57523d5635d826e89cb66f23d04a501f51e3e78e27b",
@@ -73,7 +73,7 @@
     {
       "target": "esp32c6",
       "version": "0.4.2",
-      "source_commit": "78c746fa51e4f26e6e5ec062027105c6a300f480",
+      "source_commit": "ba2d5ff454f2e77ca2b6eb3002de583adfc6f182",
       "idf_version": "v6.0.2",
       "factory_file": "ios-ancs-esp32c6-v0.4.2.factory.bin",
       "factory_sha256": "21a84f8bb923d7e3e01f7f72f98ea64caeb3f1d813f76e5786215d4bc32679b2",
@@ -90,7 +90,7 @@
     {
       "target": "esp32c61",
       "version": "0.4.2",
-      "source_commit": "78c746fa51e4f26e6e5ec062027105c6a300f480",
+      "source_commit": "ba2d5ff454f2e77ca2b6eb3002de583adfc6f182",
       "idf_version": "v6.0.2",
       "factory_file": "ios-ancs-esp32c61-v0.4.2.factory.bin",
       "factory_sha256": "c5e65dbf8ce670fac50dfba1e102d1536e5198feb18496baabb3d20c914fe51b",
@@ -107,7 +107,7 @@
     {
       "target": "esp32s3",
       "version": "0.4.2",
-      "source_commit": "78c746fa51e4f26e6e5ec062027105c6a300f480",
+      "source_commit": "ba2d5ff454f2e77ca2b6eb3002de583adfc6f182",
       "idf_version": "v6.0.2",
       "factory_file": "ios-ancs-esp32s3-v0.4.2.factory.bin",
       "factory_sha256": "46588c203c365148ada300bd2fe147db09e8b74db7ccadf69ff7b418bf622a50",
