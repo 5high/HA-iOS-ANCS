@@ -45,7 +45,7 @@ iPhone → BLE ANCS → ESP32 → Wi-Fi/MQTT → Home Assistant
 
 1. 在桌面版 Chrome 或 Edge 打开 [浏览器安装页面](https://5high.github.io/HA-iOS-ANCS/)，用 USB 数据线连接 ESP32 开发板。
 2. 选择板子型号，用 ESP Web Tools 刷入 factory 镜像。
-3. 连接开发板发出的 `IOSMSG-XXXXXX` Wi-Fi，密码 `iosmsg-xxxxxx`。
+3. 连接开发板发出的 `iOSMSG-XXXXXX` Wi-Fi，密码 `iosmsg-xxxxxx`。
 4. 在 `http://192.168.4.1` 门户中只保存 Wi-Fi 与 MQTT 设置。该门户不保存 Home Assistant 或 iPhone 通知设置。
 5. 不离开 `http://192.168.4.1` 设置门户，点击 **注册 iPhone 设备** 打开 120 秒注册窗口。Home Assistant 的 **开始 iPhone 注册** 按钮和长按 BOOT 3 秒也能打开同一个注册窗口。
 6. 查看设置门户显示的正确固定 PIN `654321`，在 iOS 蓝牙设置中选择设备并输入该码，允许通知共享；确认 Home Assistant 中 `最近通知` 和 `App 名称` 传感器已更新。
@@ -56,7 +56,7 @@ iPhone → BLE ANCS → ESP32 → Wi-Fi/MQTT → Home Assistant
 
 ## Wi-Fi 与 MQTT 设置
 
-设置 AP 和 `http://192.168.4.1` 门户只保存 Wi-Fi 与 MQTT 设置。`IOSMSG-XXXXXX` 的 `XXXXXX` 是基础 Wi-Fi MAC 地址最后 6 位：SSID 用大写，`iosmsg-xxxxxx`（通用形式 `ancs-<lowercase_suffix>`）密码用小写。Home Assistant 设备由 MQTT Discovery 创建。
+设置 AP 和 `http://192.168.4.1` 门户只保存 Wi-Fi 与 MQTT 设置。`iOSMSG-XXXXXX` 的 `XXXXXX` 是基础 Wi-Fi MAC 地址最后 6 位：SSID 用大写，`iosmsg-xxxxxx`（通用形式 `ancs-<lowercase_suffix>`）密码用小写。Home Assistant 设备由 MQTT Discovery 创建。
 
 从固件 0.4.0 起，MQTT 服务器一旦连接成功，设置就会被记住。
 
@@ -130,7 +130,7 @@ homeassistant/automation_ios_ancs_baemin_delivery_tts.yaml
 ## 问题排查
 
 - 安装按钮不显示或失败：检查桌面版 Chrome/Edge、USB 数据线、操作系统串口权限。iPhone/iPad 浏览器无法进行 USB 刷写。
-- 看不到 `IOSMSG-XXXXXX`：确认供电与刷写是否成功，长按 BOOT 3 秒打开恢复窗口。
+- 看不到 `iOSMSG-XXXXXX`：确认供电与刷写是否成功，长按 BOOT 3 秒打开恢复窗口。
 - 打不开 `http://192.168.4.1`：确认确实连在 setup AP 上，并暂时关闭 VPN/蜂窝数据路由。
 - MQTT 连不上：检查 host、port、TLS CA、用户名/密码、ACL、重复的 Client ID。
 - iPhone 搜不到设备：用 `开始 iPhone 注册` 或 BOOT 3 秒重新打开 120 秒注册窗口。

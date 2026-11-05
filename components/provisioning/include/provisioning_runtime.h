@@ -16,7 +16,7 @@ extern "C" {
 /* ASCII-only prefix: the "iOS" ligature (U+F8FF on Apple systems) in the
  * old name made non-Apple clients render garbage or drop the network from
  * curated scans entirely. Keep plain ASCII for fleet-wide compatibility. */
-#define PROVISIONING_RUNTIME_AP_SSID_PREFIX "IOSMSG-"
+#define PROVISIONING_RUNTIME_AP_SSID_PREFIX "iOSMSG-"
 #define PROVISIONING_RUNTIME_AP_PASSWORD_PREFIX "iosmsg-"
 #define PROVISIONING_RUNTIME_CAPTIVE_URI "http://192.168.4.1"
 #define PROVISIONING_RUNTIME_WIFI_TIMEOUT_MS 45000

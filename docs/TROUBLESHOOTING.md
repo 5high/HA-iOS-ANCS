@@ -14,7 +14,7 @@ Developer examples use `COMx` on Windows and `/dev/ttyACM0` on Linux. Replace th
 
 ## Setup AP Is Missing
 
-- Expected SSID: `IOSMSG-XXXXXX`.
+- Expected SSID: `iOSMSG-XXXXXX`.
 - Expected password: `iosmsg-xxxxxx`.
 - `XXXXXX` is the last six hexadecimal digits of the base Wi-Fi MAC address, uppercase in the SSID and lowercase in the password. The generic form is `ancs-<lowercase_suffix>`, and it is not a model number.
 - Infrastructure Wi-Fi passwords are case-sensitive and stored exactly as entered.
@@ -25,7 +25,7 @@ The setup AP can close after Wi-Fi, MQTT, and an existing BLE bond are all ready
 
 ## Portal Does Not Open
 
-- Join `IOSMSG-XXXXXX` first.
+- Join `iOSMSG-XXXXXX` first.
 - Browse directly to `http://192.168.4.1`.
 - Temporarily disable VPN, mobile-data routing, or another active Wi-Fi route if the browser goes elsewhere.
 

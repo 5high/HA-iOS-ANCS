@@ -41,7 +41,7 @@ INSTALLER_SECTION_MARKERS = (
     "verify",
 )
 INSTALLER_FACTS = (
-    "IOSMSG-XXXXXX",
+    "iOSMSG-XXXXXX",
     "iosmsg-xxxxxx",
     "http://192.168.4.1",
     "iPhone 注册开始",
