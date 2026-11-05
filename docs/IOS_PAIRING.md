@@ -16,7 +16,7 @@ This device uses explicit BLE enrollment. It does not advertise for a new iPhone
 
 1. Press setup-portal **Enroll iPhone**, press Home Assistant **Start iPhone enrollment**, or hold BOOT for 3 seconds.
 2. Pair within the 120-second enrollment window without leaving the setup portal.
-3. On iPhone, open **Settings > Bluetooth** and select the `IOS-ANCS-*` device.
+3. On iPhone, open **Settings > Bluetooth** and select the `iOSMSG-*` device.
 4. Enter the fixed PIN `654321` shown in the setup portal.
 5. Allow notification sharing when iOS asks.
 6. Generate a visible notification and confirm Home Assistant updates `Recent notification` and `App name`.

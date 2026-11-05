@@ -27,7 +27,7 @@ The project bridges iOS notifications into local Home Assistant automations thro
 
 1. Open the [browser installer](https://5high.github.io/HA-iOS-ANCS/) in desktop Chrome or Edge and connect the ESP32 board with a USB data cable.
 2. Select the board model and flash the factory image with ESP Web Tools.
-3. Join the board's `IOS-ANCS-SETUP-XXXXXX` Wi-Fi using password `ancs-xxxxxx`.
+3. Join the board's `iOSMSG-XXXXXX` Wi-Fi using password `iosmsg-xxxxxx`.
 4. Open `http://192.168.4.1` and save Wi-Fi and MQTT settings only. The portal does not store Home Assistant or iPhone notification settings.
 5. Without leaving `http://192.168.4.1`, press **Enroll iPhone** in the setup portal to open the 120-second enrollment window. The Home Assistant **Start iPhone enrollment** button and holding BOOT for 3 seconds remain available alternatives.
 6. Read the fixed PIN `123456` shown in the setup portal, select the device in iOS Bluetooth settings, enter the code, and allow notification sharing. Verify that `Recent notification` and `App name` update in Home Assistant.
@@ -102,7 +102,7 @@ Notification JSON preserves the original `app_id` and adds a friendly `app_name`
 ## Troubleshooting
 
 - If browser flashing fails, use desktop Chrome/Edge, verify the USB cable supports data, and check OS serial permissions. iPhone and iPad browsers cannot flash over USB.
-- If `IOS-ANCS-SETUP-XXXXXX` is missing, verify power and flashing, then hold BOOT for 3 seconds to open the recovery window.
+- If `iOSMSG-XXXXXX` is missing, verify power and flashing, then hold BOOT for 3 seconds to open the recovery window.
 - If `http://192.168.4.1` does not open, confirm you are connected to the setup AP and temporarily disable VPN or mobile-data routing.
 - If MQTT does not connect, check host, port, TLS CA, username/password, broker ACLs, and duplicate Client IDs.
 - If the iPhone does not see the device, reopen the 120-second enrollment window with setup-portal **Enroll iPhone**, Home Assistant **Start iPhone enrollment**, or BOOT for 3 seconds.
