@@ -27,3 +27,7 @@
 /sdkconfig.esp32s3
 /test_app/sdkconfig.old
 *.log
+
+# Per-target release artifacts are uploaded to the GitHub Release, not committed to the Pages tree.
+/docs/firmware/*/*.app.bin
+/docs/firmware/*/*.json
