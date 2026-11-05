@@ -797,13 +797,13 @@ def test_manifest_contract() -> None:
     assert manifest == {
         "domain": "ha_ios_ancs",
         "name": "iOS ANCS",
-        "codeowners": ["@1bobby-git"],
+        "codeowners": ["@5high"],
         "config_flow": True,
         "dependencies": ["mqtt"],
-        "documentation": "https://github.com/1bobby-git/HA-iOS-ANCS",
+        "documentation": "https://github.com/5high/HA-iOS-ANCS",
         "integration_type": "device",
         "iot_class": "local_push",
-        "issue_tracker": "https://github.com/1bobby-git/HA-iOS-ANCS/issues",
+        "issue_tracker": "https://github.com/5high/HA-iOS-ANCS/issues",
         "requirements": [],
         "version": "0.6.15",
     }
