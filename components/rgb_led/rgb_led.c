@@ -6,19 +6,30 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "soc/soc_caps.h"
+/* sdkconfig.h first: SOC_RMT_SUPPORTED must reflect the target's Kconfig,
+ * not the raw soc/caps.h defaults. */
+#include "sdkconfig.h"
 
-#if SOC_RMT_SUPPORTED
 #include "led_strip.h"
-#endif
 
 static const char *TAG = "rgb_led";
 
-#if SOC_RMT_SUPPORTED
+#if defined(CONFIG_SOC_RMT_SUPPORTED) && CONFIG_SOC_RMT_SUPPORTED
+
 
 /* Onboard addressable LED data pin. ESP32-S3-DevKitC-1 revision v1.0 wires
- * the WS2812 bead to GPIO48 (revision v1.1 moved it to GPIO38). */
+ * the WS2812 bead to GPIO48 (revision v1.1 moved it to GPIO38). Targets
+ * without that pin (e.g. ESP32-C3 tops out at GPIO21) fall back to an inert
+ * driver rather than failing RMT channel creation every boot. */
+#if CONFIG_IDF_TARGET_ESP32S3 || CONFIG_IDF_TARGET_ESP32C6 ||     CONFIG_IDF_TARGET_ESP32C5 || CONFIG_IDF_TARGET_ESP32C61
 #define RGB_LED_GPIO 48
+#elif CONFIG_IDF_TARGET_ESP32C3
+#define RGB_LED_GPIO 8 /* DevKitM-1: WS2812(RGB) on GPIO8 */
+#elif CONFIG_IDF_TARGET_ESP32C2
+#define RGB_LED_GPIO 7 /* ESP8684/C2 dev kits: WS2812 on GPIO7/8 */
+#else
+#define RGB_LED_GPIO -1 /* no known onboard bead wiring */
+#endif
 
 /* The board carries exactly one bead. */
 #define LED_COUNT 1
@@ -160,6 +171,10 @@ static void refresh_tick(void *arg)
 
 esp_err_t rgb_led_init(void)
 {
+#if RGB_LED_GPIO < 0
+    ESP_LOGI(TAG, "no onboard bead wiring for this target; rgb led disabled");
+    return ESP_OK;
+#else
     led_strip_config_t strip_cfg = {
         .strip_gpio_num = RGB_LED_GPIO,
         .max_leds = LED_COUNT,
@@ -194,6 +209,7 @@ esp_err_t rgb_led_init(void)
 
     ESP_LOGI(TAG, "rgb led ready on gpio%d", RGB_LED_GPIO);
     return ESP_OK;
+#endif
 }
 
 void rgb_led_notify_arrived(void)
