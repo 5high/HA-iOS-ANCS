@@ -54,6 +54,7 @@ def render_portal_status(status):
             clientId: elements.get('mqtt-client-id').value,
             baseTopic: elements.get('mqtt-base-topic').value,
           }}));
+          process.exit(0);
         }}, 20);
         """
     )
@@ -131,6 +132,7 @@ def render_portal_ble_status(system_overrides):
             detail: elements.get('status-ble-detail').textContent,
             guidance: elements.get('ble-guidance').textContent,
           }}));
+          process.exit(0);
         }}, 20);
         """
     )
