@@ -27,6 +27,7 @@ typedef struct {
     int mqtt_connect_return_code;
     uint64_t mqtt_last_error_at_ms;
     bool ble_bonded;
+    bool notification_led_enabled;
     bool ble_connected;
     bool bond_store_known;
     int stored_peer_count;
@@ -63,6 +64,9 @@ typedef struct {
     esp_err_t (*restart)(void *context);
     esp_err_t (*reset_provisioning)(void *context);
     esp_err_t (*reset_all_data)(void *context);
+    /* Notification LED toggle: the portal stores the preference itself and
+     * calls this so the change takes effect without a restart. */
+    esp_err_t (*set_led_enabled)(bool enabled, void *context);
     void *context;
 } portal_http_handlers_t;
 

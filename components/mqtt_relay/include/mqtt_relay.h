@@ -107,6 +107,9 @@ typedef struct {
     bool ble_bonded;
     uint64_t uptime_seconds;
     uint64_t last_notification_uptime_ms;
+    /* Mirrors the portal/NVS LED preference so the HA switch entity can
+     * report state from the retained status payload. */
+    bool notification_led_enabled;
     mqtt_relay_diagnostics_t diagnostics;
 } mqtt_relay_runtime_status_t;
 
@@ -134,6 +137,9 @@ typedef enum {
     MQTT_RELAY_EVENT_FAILED,
     MQTT_RELAY_EVENT_ENROLL_REQUEST,
     MQTT_RELAY_EVENT_RESTART_REQUEST,
+    /* command/led payload ON (see mqtt_relay_get_led_enabled). */
+    MQTT_RELAY_EVENT_LED_ON_REQUEST,
+    MQTT_RELAY_EVENT_LED_OFF_REQUEST,
 } mqtt_relay_event_t;
 
 typedef void (*mqtt_relay_event_callback_t)(mqtt_relay_event_t event,
@@ -191,6 +197,27 @@ esp_err_t mqtt_relay_build_restart_command_topic(
     const provision_config_t *config,
     char *out,
     size_t out_size);
+esp_err_t mqtt_relay_build_led_command_topic(
+    const provision_config_t *config,
+    char *out,
+    size_t out_size);
+esp_err_t mqtt_relay_build_led_discovery_topic(
+    const provision_config_t *config,
+    char *out,
+    size_t out_size);
+esp_err_t mqtt_relay_build_led_discovery_payload(
+    const provision_config_t *config,
+    const mqtt_relay_device_info_t *device_info,
+    const char *command_topic,
+    const char *state_topic,
+    const char *availability_topic,
+    char *out,
+    size_t out_size);
+/* Notification LED preference: mirrored from NVS so the HA switch can
+ * report the current state and flip it remotely. */
+esp_err_t mqtt_relay_set_led_enabled(bool enabled);
+bool mqtt_relay_get_led_enabled(void);
+
 esp_err_t mqtt_relay_build_restart_discovery_topic(
     const provision_config_t *config,
     char *out,

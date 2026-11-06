@@ -287,10 +287,12 @@ esp_err_t nvs_get_blob(nvs_handle_t h, const char *k, void *o, size_t *l)
 { (void)h; (void)k; (void)o; (void)l; return ESP_ERR_NVS_NOT_FOUND; }
 esp_err_t nvs_set_blob(nvs_handle_t h, const char *k, const void *v, size_t l)
 { (void)h; (void)k; (void)v; (void)l; return ESP_OK; }
+static uint8_t s_u8;
+static int s_u8_set;
 esp_err_t nvs_get_u8(nvs_handle_t h, const char *k, uint8_t *o)
-{ (void)h; (void)k; (void)o; return ESP_ERR_NVS_NOT_FOUND; }
+{ (void)h; (void)k; if (!s_u8_set) return ESP_ERR_NVS_NOT_FOUND; *o = s_u8; return ESP_OK; }
 esp_err_t nvs_set_u8(nvs_handle_t h, const char *k, uint8_t v)
-{ (void)h; (void)k; (void)v; return ESP_OK; }
+{ (void)h; (void)k; s_u8 = v; s_u8_set = 1; return ESP_OK; }
 static uint32_t s_u32;
 static int s_u32_set;
 esp_err_t nvs_get_u32(nvs_handle_t h, const char *k, uint32_t *o)
@@ -300,7 +302,7 @@ esp_err_t nvs_set_u32(nvs_handle_t h, const char *k, uint32_t v)
 esp_err_t nvs_commit(nvs_handle_t h) { (void)h; return ESP_OK; }
 void nvs_close(nvs_handle_t h) { (void)h; }
 esp_err_t nvs_flash_init_partition(const char *p) { (void)p; return ESP_OK; }
-esp_err_t nvs_flash_erase_partition(const char *p) { (void)p; s_u32_set = 0; return ESP_OK; }
+esp_err_t nvs_flash_erase_partition(const char *p) { (void)p; s_u32_set = 0; s_u8_set = 0; return ESP_OK; }
 esp_err_t nvs_flash_deinit_partition(const char *p) { (void)p; return ESP_OK; }
 '''
 
@@ -438,6 +440,18 @@ int main(void)
            == ESP_OK);
     assert(merged.mqtt_ca[0] == '\0');
 
+
+    /* The LED preference lives in its own NVS key: it round-trips and is
+     * erased by a reset, but it never grows the CRC-protected settings blob
+     * (that would invalidate the configuration already stored on deployed
+     * units). */
+    bool led = false;
+    assert(provision_store_load_led_enabled(&led) == ESP_ERR_NVS_NOT_FOUND);
+    assert(provision_store_save_led_enabled(true) == ESP_OK);
+    assert(provision_store_load_led_enabled(&led) == ESP_OK && led == true);
+    assert(provision_store_save_led_enabled(false) == ESP_OK);
+    assert(provision_store_load_led_enabled(&led) == ESP_OK && led == false);
+
     /* The verified marker round-trips and is erased with the settings. */
     uint32_t marker = 1;
     assert(provision_store_load_mqtt_verified(&marker) == ESP_ERR_NVS_NOT_FOUND);
@@ -446,6 +460,7 @@ int main(void)
     assert(provision_store_load_mqtt_verified(&marker) == ESP_OK && marker == fp);
     assert(provision_store_reset() == ESP_OK);
     assert(provision_store_load_mqtt_verified(&marker) == ESP_ERR_NVS_NOT_FOUND);
+    assert(provision_store_load_led_enabled(&led) == ESP_ERR_NVS_NOT_FOUND);
     return 0;
 }
 '''

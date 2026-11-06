@@ -480,6 +480,9 @@ static cJSON *build_status_response(void)
         add_number(system_json, "mqtt_connect_return_code", system.mqtt_connect_return_code) != ESP_OK ||
         add_number(system_json, "mqtt_last_error_at_ms", system.mqtt_last_error_at_ms) != ESP_OK ||
         add_bool(system_json, "ble_bonded", system.ble_bonded) != ESP_OK ||
+        add_bool(system_json,
+                 "notification_led_enabled",
+                 system.notification_led_enabled) != ESP_OK ||
         add_bool(system_json, "ble_connected", system.ble_connected) != ESP_OK ||
         add_bool(system_json, "bond_store_known", system.bond_store_known) != ESP_OK ||
         add_number(system_json, "stored_peer_count", system.stored_peer_count) != ESP_OK ||
@@ -856,6 +859,35 @@ static esp_err_t handle_restart_post(httpd_req_t *req)
                                     "restart failed");
 }
 
+static esp_err_t handle_led_post(httpd_req_t *req)
+{
+    esp_err_t guard_err = require_ap_local_request(req);
+    if (guard_err != ESP_OK) {
+        return send_ap_guard_error(req, guard_err);
+    }
+    cJSON *json = NULL;
+    esp_err_t err = read_json_body(req, &json);
+    if (err != ESP_OK) {
+        return send_error_json(req, "400 Bad Request", "invalid JSON");
+    }
+    const cJSON *field = cJSON_GetObjectItemCaseSensitive(json, "enabled");
+    const bool enabled = cJSON_IsBool(field) && cJSON_IsTrue(field);
+    cJSON_Delete(json);
+
+    if (s_handlers.set_led_enabled == NULL) {
+        return send_error_json(req, "503 Service Unavailable", "led unavailable");
+    }
+    /* The handler owns persistence (NVS) and the live update, including the
+     * retained MQTT state so Home Assistant follows immediately. */
+    err = s_handlers.set_led_enabled(enabled, s_handlers.context);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "LED preference save failed: 0x%x", (unsigned)err);
+        return send_error_json(req, "500 Internal Server Error", "led save failed");
+    }
+    return send_json(req, enabled ? "{\"ok\":true,\"enabled\":true}"
+                                  : "{\"ok\":true,\"enabled\":false}");
+}
+
 static esp_err_t handle_reset_post(httpd_req_t *req)
 {
     esp_err_t guard_err = require_ap_local_request(req);
@@ -925,6 +957,7 @@ static esp_err_t register_all_routes(httpd_handle_t server)
     ESP_RETURN_ON_ERROR(register_uri(server, "/api/status", HTTP_GET, handle_status_get), TAG, "status");
     ESP_RETURN_ON_ERROR(register_uri(server, "/api/wifi/scan", HTTP_GET, handle_wifi_scan_get), TAG, "scan");
     ESP_RETURN_ON_ERROR(register_uri(server, "/api/config", HTTP_POST, handle_config_post), TAG, "config");
+    ESP_RETURN_ON_ERROR(register_uri(server, "/api/led", HTTP_POST, handle_led_post), TAG, "led");
     ESP_RETURN_ON_ERROR(register_uri(server, "/api/mqtt/test", HTTP_POST, handle_mqtt_test_post), TAG, "mqtt test");
     ESP_RETURN_ON_ERROR(register_uri(server, "/api/notification/test", HTTP_POST, handle_test_notification_post), TAG, "notification test");
     ESP_RETURN_ON_ERROR(register_uri(server, "/api/ble/enroll", HTTP_POST, handle_ble_enroll_post), TAG, "ble enroll");

@@ -15,6 +15,7 @@
 #define PROVISION_SLOT_B "slot_b"
 #define PROVISION_ACTIVE_KEY "active"
 #define PROVISION_MQTT_VERIFIED_KEY "mqtt_ok"
+#define PROVISION_LED_ENABLED_KEY "led_on"
 #define PROVISION_ACTIVE_A 0U
 #define PROVISION_ACTIVE_B 1U
 
@@ -33,6 +34,8 @@ static bool s_test_fail_next_readback;
 static bool s_test_fail_next_active_commit;
 static uint32_t s_test_mqtt_verified;
 static bool s_test_mqtt_verified_valid;
+static bool s_test_led_enabled;
+static bool s_test_led_enabled_valid;
 #endif
 
 typedef struct {
@@ -745,6 +748,8 @@ esp_err_t provision_store_reset(void)
         s_test_active_valid = false;
         s_test_mqtt_verified = 0;
         s_test_mqtt_verified_valid = false;
+        s_test_led_enabled = false;
+        s_test_led_enabled_valid = false;
         return ESP_OK;
     }
 #endif
@@ -808,6 +813,59 @@ esp_err_t provision_store_save_mqtt_verified(uint32_t fingerprint)
     nvs_close(handle);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "MQTT verified marker save failed: %s", esp_err_to_name(err));
+    }
+    return err;
+}
+
+esp_err_t provision_store_load_led_enabled(bool *enabled)
+{
+    if (enabled == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+#if CONFIG_PROVISION_STORE_TEST_BACKEND
+    if (s_test_backend) {
+        if (!s_test_led_enabled_valid) {
+            return ESP_ERR_NVS_NOT_FOUND;
+        }
+        *enabled = s_test_led_enabled;
+        return ESP_OK;
+    }
+#endif
+    nvs_handle_t handle = 0;
+    esp_err_t err = open_namespace(NVS_READONLY, &handle);
+    if (err != ESP_OK) {
+        return err;
+    }
+    uint8_t stored = 0;
+    err = nvs_get_u8(handle, PROVISION_LED_ENABLED_KEY, &stored);
+    nvs_close(handle);
+    if (err == ESP_OK) {
+        *enabled = stored != 0U;
+    }
+    return err;
+}
+
+esp_err_t provision_store_save_led_enabled(bool enabled)
+{
+#if CONFIG_PROVISION_STORE_TEST_BACKEND
+    if (s_test_backend) {
+        s_test_led_enabled = enabled;
+        s_test_led_enabled_valid = true;
+        return ESP_OK;
+    }
+#endif
+    nvs_handle_t handle = 0;
+    esp_err_t err = open_namespace(NVS_READWRITE, &handle);
+    if (err != ESP_OK) {
+        return err;
+    }
+    err = nvs_set_u8(handle, PROVISION_LED_ENABLED_KEY, enabled ? 1U : 0U);
+    if (err == ESP_OK) {
+        err = nvs_commit(handle);
+    }
+    nvs_close(handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "LED preference save failed: %s", esp_err_to_name(err));
     }
     return err;
 }

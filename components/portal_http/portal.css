@@ -646,6 +646,19 @@ summary:focus-visible {
   gap: 18px;
 }
 
+.led-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.led-copy h2 {
+  margin-bottom: 8px;
+}
+
+.led-switch {
+  max-width: 420px;
+}
+
 .ble-copy h2 {
   margin-bottom: 8px;
 }

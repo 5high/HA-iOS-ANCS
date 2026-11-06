@@ -18,9 +18,10 @@
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "mqtt_relay_test.h"
+#include "provision_store.h"
 #include "relay_policy.h"
 
-#define MQTT_RELAY_WORKER_STACK 4096
+#define MQTT_RELAY_WORKER_STACK 8192
 #define MQTT_RELAY_STATE_PAYLOAD_MAX 3072
 #define MQTT_RELAY_WORKER_PRIORITY 5
 #define MQTT_RELAY_DISCOVERY_PAYLOAD_MAX 1536
@@ -33,6 +34,8 @@
 
 static const char MQTT_RELAY_ENROLL_PAYLOAD[] = "ENROLL";
 static const char MQTT_RELAY_RESTART_PAYLOAD[] = "RESTART";
+static const char MQTT_RELAY_LED_ON_PAYLOAD[] = "ON";
+static const char MQTT_RELAY_LED_OFF_PAYLOAD[] = "OFF";
 
 typedef struct {
     provision_config_t config;
@@ -85,11 +88,16 @@ typedef struct {
     char availability_topic[MQTT_RELAY_TOPIC_MAX];
     char state_topic[MQTT_RELAY_TOPIC_MAX];
     char discovery_topic[MQTT_RELAY_DISCOVERY_TOPIC_MAX];
+    char led_command_topic[MQTT_RELAY_TOPIC_MAX];
+    char led_discovery_topic[MQTT_RELAY_DISCOVERY_TOPIC_MAX];
+    bool notification_led_enabled;
     char enroll_command_topic[MQTT_RELAY_TOPIC_MAX];
     char enroll_discovery_topic[MQTT_RELAY_DISCOVERY_TOPIC_MAX];
     char restart_command_topic[MQTT_RELAY_TOPIC_MAX];
     char restart_discovery_topic[MQTT_RELAY_DISCOVERY_TOPIC_MAX];
 } mqtt_relay_context_t;
+
+static esp_err_t mqtt_relay_publish_state_snapshot(void);
 
 typedef struct {
     const char *key;
@@ -612,6 +620,131 @@ esp_err_t mqtt_relay_build_restart_discovery_topic(
                                  config->mqtt_client_id);
     return (written < 0 || (size_t)written >= out_size) ? ESP_ERR_INVALID_SIZE
                                                         : ESP_OK;
+}
+
+esp_err_t mqtt_relay_build_led_command_topic(
+    const provision_config_t *config,
+    char *out,
+    size_t out_size)
+{
+    if (config == NULL || out == NULL || out_size == 0U) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    return append_topic(config->mqtt_base_topic, "command/led", out, out_size);
+}
+
+esp_err_t mqtt_relay_build_led_discovery_topic(
+    const provision_config_t *config,
+    char *out,
+    size_t out_size)
+{
+    if (config == NULL || out == NULL || out_size == 0U ||
+        !discovery_id_is_safe(config->mqtt_client_id)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    const int written = snprintf(out,
+                                 out_size,
+                                 "homeassistant/switch/%s/notification_led/config",
+                                 config->mqtt_client_id);
+    return (written < 0 || (size_t)written >= out_size) ? ESP_ERR_INVALID_SIZE
+                                                        : ESP_OK;
+}
+
+esp_err_t mqtt_relay_build_led_discovery_payload(
+    const provision_config_t *config,
+    const mqtt_relay_device_info_t *device_info,
+    const char *command_topic,
+    const char *state_topic,
+    const char *availability_topic,
+    char *out,
+    size_t out_size)
+{
+    if (config == NULL || command_topic == NULL || state_topic == NULL ||
+        availability_topic == NULL || out == NULL || out_size == 0U ||
+        !discovery_id_is_safe(config->mqtt_client_id) ||
+        !device_info_is_valid(device_info) ||
+        topic_has_publish_wildcard(command_topic) ||
+        topic_has_publish_wildcard(state_topic) ||
+        topic_has_publish_wildcard(availability_topic)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    char unique_id[PROVISION_MQTT_CLIENT_ID_MAX + 24];
+    char default_entity_id[PROVISION_MQTT_CLIENT_ID_MAX + 32];
+    int written = snprintf(unique_id,
+                           sizeof(unique_id),
+                           "%s_notification_led",
+                           config->mqtt_client_id);
+    if (written < 0 || (size_t)written >= sizeof(unique_id)) {
+        return ESP_ERR_INVALID_SIZE;
+    }
+    written = snprintf(default_entity_id,
+                       sizeof(default_entity_id),
+                       "switch.%s",
+                       unique_id);
+    if (written < 0 || (size_t)written >= sizeof(default_entity_id)) {
+        return ESP_ERR_INVALID_SIZE;
+    }
+
+    char *cursor = out;
+    size_t remaining = out_size;
+    esp_err_t err = json_write_literal(&cursor, &remaining, "{\"name\":");
+    if (err == ESP_OK) {
+        err = json_write_string(&cursor, &remaining, "Notification light");
+    }
+    if (err == ESP_OK) {
+        err = json_write_literal(&cursor, &remaining, ",\"unique_id\":");
+    }
+    if (err == ESP_OK) {
+        err = json_write_string(&cursor, &remaining, unique_id);
+    }
+    if (err == ESP_OK) {
+        err = json_write_literal(&cursor, &remaining, ",\"default_entity_id\":");
+    }
+    if (err == ESP_OK) {
+        err = json_write_string(&cursor, &remaining, default_entity_id);
+    }
+    if (err == ESP_OK) {
+        err = json_write_literal(&cursor, &remaining, ",\"command_topic\":");
+    }
+    if (err == ESP_OK) {
+        err = json_write_string(&cursor, &remaining, command_topic);
+    }
+    if (err == ESP_OK) {
+        err = json_write_literal(&cursor, &remaining, ",\"state_topic\":");
+    }
+    if (err == ESP_OK) {
+        err = json_write_string(&cursor, &remaining, state_topic);
+    }
+    if (err == ESP_OK) {
+        err = json_write_literal(
+            &cursor,
+            &remaining,
+            ",\"value_template\":\"{{ value_json.notification_led }}\""
+            ",\"payload_on\":\"ON\",\"payload_off\":\"OFF\""
+            ",\"state_on\":\"true\",\"state_off\":\"false\"");
+    }
+    if (err == ESP_OK) {
+        err = json_write_literal(&cursor, &remaining, ",\"availability_topic\":");
+    }
+    if (err == ESP_OK) {
+        err = json_write_string(&cursor, &remaining, availability_topic);
+    }
+    if (err == ESP_OK) {
+        err = json_write_literal(
+            &cursor,
+            &remaining,
+            ",\"payload_available\":\"online\",\"payload_not_available\":\"offline\""
+            ",\"qos\":1,\"retain\":false,\"entity_category\":\"config\""
+            ",\"icon\":\"mdi:led-on\"");
+    }
+    if (err == ESP_OK) {
+        err = append_device_json(&cursor, &remaining, config, device_info);
+    }
+    if (err == ESP_OK) {
+        err = json_write_literal(&cursor, &remaining, "}");
+    }
+    return err;
 }
 
 esp_err_t mqtt_relay_build_restart_discovery_payload(
@@ -1269,14 +1402,15 @@ esp_err_t mqtt_relay_build_state_payload(const mqtt_relay_counters_t *counters,
                  "{\"ready\":%s,\"connected\":%s,\"wifi_connected\":%s"
                  ",\"mqtt_connected\":%s,\"ble_connected\":%s"
                  ",\"ble_bonded\":%s,\"uptime_seconds\":%" PRIu64
-                 ",\"uptime\":",
+                 ",\"notification_led\":%s,\"uptime\":",
                  ready ? "true" : "false",
                  runtime->mqtt_connected ? "true" : "false",
                  runtime->wifi.connected ? "true" : "false",
                  runtime->mqtt_connected ? "true" : "false",
                  runtime->ble_connected ? "true" : "false",
                  runtime->ble_bonded ? "true" : "false",
-                 runtime->uptime_seconds);
+                 runtime->uptime_seconds,
+                 runtime->notification_led_enabled ? "true" : "false");
     if (written < 0 || (size_t)written >= remaining) {
         return ESP_ERR_INVALID_SIZE;
     }
@@ -1660,6 +1794,8 @@ static bool mqtt_relay_publish_retained_once(const char *topic,
 static bool mqtt_relay_publish_discovery_once(const char *topic,
                                               const char *payload)
 {
+    /* NOTE: esp_mqtt_client_publish() needs ~6KB of stack; the relay worker
+     * runs on 4096. Keep discovery on the enqueue path (QoS 0 drains on write). */
     const int result = mqtt_relay_enqueue_raw(topic,
                                               payload,
                                               MQTT_RELAY_DISCOVERY_QOS,
@@ -1683,6 +1819,7 @@ static esp_err_t mqtt_relay_publish_state_snapshot(void)
     runtime.mqtt_connected = s_ctx.mqtt_connected;
     runtime.ble_connected = s_ctx.ble_connected;
     runtime.ble_bonded = s_ctx.ble_bonded;
+    runtime.notification_led_enabled = s_ctx.notification_led_enabled;
     runtime.diagnostics = s_ctx.diagnostics;
     runtime.last_notification_uptime_ms = s_ctx.last_notification_uptime_ms;
     device_info = s_ctx.device_info;
@@ -1734,6 +1871,8 @@ static void mqtt_relay_publish_retained_status(void)
     char enroll_discovery_topic[MQTT_RELAY_DISCOVERY_TOPIC_MAX];
     char restart_command_topic[MQTT_RELAY_TOPIC_MAX];
     char restart_discovery_topic[MQTT_RELAY_DISCOVERY_TOPIC_MAX];
+    char led_command_topic[MQTT_RELAY_TOPIC_MAX];
+    char led_discovery_topic[MQTT_RELAY_DISCOVERY_TOPIC_MAX];
 
     mqtt_relay_lock();
     (void)strlcpy(discovery_config->mqtt_client_id,
@@ -1745,6 +1884,7 @@ static void mqtt_relay_publish_retained_status(void)
     runtime.mqtt_connected = s_ctx.mqtt_connected;
     runtime.ble_connected = s_ctx.ble_connected;
     runtime.ble_bonded = s_ctx.ble_bonded;
+    runtime.notification_led_enabled = s_ctx.notification_led_enabled;
     runtime.diagnostics = s_ctx.diagnostics;
     runtime.last_notification_uptime_ms = s_ctx.last_notification_uptime_ms;
     (void)strlcpy(notification_topic, s_ctx.notification_topic, sizeof(notification_topic));
@@ -1765,6 +1905,12 @@ static void mqtt_relay_publish_retained_status(void)
     (void)strlcpy(restart_discovery_topic,
                   s_ctx.restart_discovery_topic,
                   sizeof(restart_discovery_topic));
+    (void)strlcpy(led_command_topic,
+                  s_ctx.led_command_topic,
+                  sizeof(led_command_topic));
+    (void)strlcpy(led_discovery_topic,
+                  s_ctx.led_discovery_topic,
+                  sizeof(led_discovery_topic));
     mqtt_relay_unlock();
     runtime.uptime_seconds = (uint64_t)(esp_timer_get_time() / 1000000);
 
@@ -1850,6 +1996,18 @@ static void mqtt_relay_publish_retained_status(void)
             discovery,
             MQTT_RELAY_DISCOVERY_PAYLOAD_MAX) != ESP_OK ||
         !mqtt_relay_publish_discovery_once(restart_discovery_topic, discovery)) {
+        goto cleanup;
+    }
+
+    if (mqtt_relay_build_led_discovery_payload(
+            discovery_config,
+            &device_info,
+            led_command_topic,
+            state_topic,
+            availability_topic,
+            discovery,
+            MQTT_RELAY_DISCOVERY_PAYLOAD_MAX) != ESP_OK ||
+        !mqtt_relay_publish_discovery_once(led_discovery_topic, discovery)) {
         goto cleanup;
     }
 
@@ -2131,6 +2289,23 @@ static void mqtt_relay_event_handler(void *handler_args,
             mqtt_relay_emit_event(MQTT_RELAY_EVENT_FAILED);
             return;
         }
+        char led_command_topic[MQTT_RELAY_TOPIC_MAX];
+        mqtt_relay_lock();
+        (void)strlcpy(led_command_topic,
+                      s_ctx.led_command_topic,
+                      sizeof(led_command_topic));
+        mqtt_relay_unlock();
+        subscription_id = esp_mqtt_client_subscribe(
+            event->client,
+            led_command_topic,
+            MQTT_RELAY_ENROLL_COMMAND_QOS);
+        if (subscription_id < 0) {
+            mqtt_relay_lock();
+            s_ctx.mqtt_connected = false;
+            mqtt_relay_unlock();
+            mqtt_relay_emit_event(MQTT_RELAY_EVENT_FAILED);
+            return;
+        }
         mqtt_relay_notify_worker();
         mqtt_relay_emit_event(MQTT_RELAY_EVENT_CONNECTED);
         return;
@@ -2143,6 +2318,8 @@ static void mqtt_relay_event_handler(void *handler_args,
         }
         char enroll_command_topic[MQTT_RELAY_TOPIC_MAX];
         char restart_command_topic[MQTT_RELAY_TOPIC_MAX];
+        char led_command_topic[MQTT_RELAY_TOPIC_MAX];
+        bool led_enabled = false;
         mqtt_relay_lock();
         (void)strlcpy(enroll_command_topic,
                       s_ctx.enroll_command_topic,
@@ -2150,6 +2327,10 @@ static void mqtt_relay_event_handler(void *handler_args,
         (void)strlcpy(restart_command_topic,
                       s_ctx.restart_command_topic,
                       sizeof(restart_command_topic));
+        (void)strlcpy(led_command_topic,
+                      s_ctx.led_command_topic,
+                      sizeof(led_command_topic));
+        led_enabled = s_ctx.notification_led_enabled;
         mqtt_relay_unlock();
         if (mqtt_relay_is_enroll_command(
                 enroll_command_topic,
@@ -2171,6 +2352,46 @@ static void mqtt_relay_event_handler(void *handler_args,
                        (size_t)event->current_data_offset,
                        event->retain != 0)) {
             mqtt_relay_emit_event(MQTT_RELAY_EVENT_RESTART_REQUEST);
+        } else if (mqtt_relay_is_exact_command(
+                       led_command_topic,
+                       MQTT_RELAY_LED_ON_PAYLOAD,
+                       event->topic,
+                       (size_t)event->topic_len,
+                       event->data,
+                       (size_t)event->data_len,
+                       (size_t)event->total_data_len,
+                       (size_t)event->current_data_offset,
+                       event->retain != 0)) {
+            if (!led_enabled) {
+                /* Apply first: a failed persist must not leave HA showing a
+                 * state the device is not honouring. */
+                if (provision_store_save_led_enabled(true) == ESP_OK) {
+                    mqtt_relay_lock();
+                    s_ctx.notification_led_enabled = true;
+                    mqtt_relay_unlock();
+                    mqtt_relay_emit_event(MQTT_RELAY_EVENT_LED_ON_REQUEST);
+                }
+                (void)mqtt_relay_publish_state_snapshot();
+            }
+        } else if (mqtt_relay_is_exact_command(
+                       led_command_topic,
+                       MQTT_RELAY_LED_OFF_PAYLOAD,
+                       event->topic,
+                       (size_t)event->topic_len,
+                       event->data,
+                       (size_t)event->data_len,
+                       (size_t)event->total_data_len,
+                       (size_t)event->current_data_offset,
+                       event->retain != 0)) {
+            if (led_enabled) {
+                if (provision_store_save_led_enabled(false) == ESP_OK) {
+                    mqtt_relay_lock();
+                    s_ctx.notification_led_enabled = false;
+                    mqtt_relay_unlock();
+                    mqtt_relay_emit_event(MQTT_RELAY_EVENT_LED_OFF_REQUEST);
+                }
+                (void)mqtt_relay_publish_state_snapshot();
+            }
         }
         return;
     }
@@ -2253,6 +2474,27 @@ static esp_err_t mqtt_relay_prepare_context(
     if (err != ESP_OK) {
         return err;
     }
+    err = mqtt_relay_build_led_command_topic(
+        config,
+        s_ctx.led_command_topic,
+        sizeof(s_ctx.led_command_topic));
+    if (err != ESP_OK) {
+        return err;
+    }
+    err = mqtt_relay_build_led_discovery_topic(
+        config,
+        s_ctx.led_discovery_topic,
+        sizeof(s_ctx.led_discovery_topic));
+    if (err != ESP_OK) {
+        return err;
+    }
+    /* Mirror the persisted portal preference so the HA switch reports the
+     * truth from the very first state publish. Unset = on (historical). */
+    bool led_enabled = true;
+    if (provision_store_load_led_enabled(&led_enabled) != ESP_OK) {
+        led_enabled = true;
+    }
+    s_ctx.notification_led_enabled = led_enabled;
     s_ctx.config = *config;
     s_ctx.device_info = *device_info;
     s_ctx.queue = xQueueCreate(MQTT_RELAY_QUEUE_CAPACITY, sizeof(mqtt_payload_item_t *));
@@ -2465,6 +2707,8 @@ esp_err_t mqtt_relay_reconfigure(const provision_config_t *config)
     char next_enroll_discovery_topic[MQTT_RELAY_DISCOVERY_TOPIC_MAX];
     char next_restart_command_topic[MQTT_RELAY_TOPIC_MAX];
     char next_restart_discovery_topic[MQTT_RELAY_DISCOVERY_TOPIC_MAX];
+    char next_led_command_topic[MQTT_RELAY_TOPIC_MAX];
+    char next_led_discovery_topic[MQTT_RELAY_DISCOVERY_TOPIC_MAX];
     esp_err_t err = mqtt_relay_build_topics(config,
                                             next_notification_topic,
                                             sizeof(next_notification_topic),
@@ -2506,6 +2750,22 @@ esp_err_t mqtt_relay_reconfigure(const provision_config_t *config)
         config,
         next_restart_discovery_topic,
         sizeof(next_restart_discovery_topic));
+    if (err != ESP_OK) {
+        mqtt_relay_lifecycle_unlock();
+        return err;
+    }
+    err = mqtt_relay_build_led_command_topic(
+        config,
+        next_led_command_topic,
+        sizeof(next_led_command_topic));
+    if (err != ESP_OK) {
+        mqtt_relay_lifecycle_unlock();
+        return err;
+    }
+    err = mqtt_relay_build_led_discovery_topic(
+        config,
+        next_led_discovery_topic,
+        sizeof(next_led_discovery_topic));
     if (err != ESP_OK) {
         mqtt_relay_lifecycle_unlock();
         return err;
@@ -2559,6 +2819,12 @@ esp_err_t mqtt_relay_reconfigure(const provision_config_t *config)
     (void)strlcpy(s_ctx.restart_discovery_topic,
                   next_restart_discovery_topic,
                   sizeof(s_ctx.restart_discovery_topic));
+    (void)strlcpy(s_ctx.led_command_topic,
+                  next_led_command_topic,
+                  sizeof(s_ctx.led_command_topic));
+    (void)strlcpy(s_ctx.led_discovery_topic,
+                  next_led_discovery_topic,
+                  sizeof(s_ctx.led_discovery_topic));
     s_ctx.config = *config;
     s_ctx.discovery_attempted_this_boot = false;
     s_ctx.mqtt_connecting = false;
@@ -2611,6 +2877,29 @@ esp_err_t mqtt_relay_reconfigure(const provision_config_t *config)
     }
     mqtt_relay_lifecycle_unlock();
     return ESP_OK;
+}
+
+esp_err_t mqtt_relay_set_led_enabled(bool enabled)
+{
+    /* NVS is authoritative; this keeps the in-memory mirror (and therefore
+     * the HA-visible state payload) in sync with a portal-side change. */
+    const esp_err_t err = provision_store_save_led_enabled(enabled);
+    if (err != ESP_OK) {
+        return err;
+    }
+    mqtt_relay_lock();
+    s_ctx.notification_led_enabled = enabled;
+    mqtt_relay_unlock();
+    (void)mqtt_relay_publish_state_snapshot();
+    return ESP_OK;
+}
+
+bool mqtt_relay_get_led_enabled(void)
+{
+    mqtt_relay_lock();
+    const bool enabled = s_ctx.notification_led_enabled;
+    mqtt_relay_unlock();
+    return enabled;
 }
 
 esp_err_t mqtt_relay_register_event_callback(mqtt_relay_event_callback_t callback,

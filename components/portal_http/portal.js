@@ -1,6 +1,7 @@
 const $ = (id) => document.getElementById(id);
 const STATUS_POLL_MS = 2000;
 let formHydrated = false;
+let ledSwitchPending = false;
 
 // Bilingual setup portal: Chinese is the base copy; English strings below are
 // applied when the browser language is not Chinese. Placeholders use {} markers.
@@ -8,6 +9,9 @@ const PORTAL_LANG = (typeof navigator === 'undefined' ||
   String(navigator.language || '').toLowerCase().startsWith('zh')) ? 'zh' : 'en';
 
 const PORTAL_EN = {
+  "已开启：收到通知时设备会亮灯。": 'Enabled: the device lights up on notifications.',
+  "已关闭：收到通知时设备不再亮灯。": 'Disabled: the device stays dark on notifications.',
+  "保存亮灯设置失败。": 'Could not save the notification light setting.',
   " · {} 秒后重试": ' · retry in ${retrySeconds}s',
   "Base topic 格式不正确：用 / 分隔的多段路径，每段不能为空，不能以 / 开头或结尾，不能使用 + 或 #。例如 u/marcozy@163.com/ancs。": 'Invalid base topic: a slash-separated path where no segment is empty, it does not start or end with /, and + or # are not allowed. Example: u/marcozy@163.com/ancs.',
   "Broker 无密码请留空。": 'Leave empty if the broker has no password.',
@@ -358,6 +362,13 @@ function applyStatus(status) {
       system.mqtt_connected ? 'true' : 'false';
   }
 
+  /* The LED switch is live state, not part of the settings form: reflect
+   * the device's stored preference unless the user is mid-edit. */
+  if (!ledSwitchPending) {
+    $('notification-led').checked =
+      system.notification_led_enabled !== false;
+  }
+
   $('device-name').textContent = apName;
 
   if (runtime.sta_has_ip) {
@@ -548,6 +559,24 @@ $('wifi-ssid-manual').addEventListener('input', () => {
 });
 
 $('mqtt-tls').addEventListener('change', toggleTlsField);
+
+$('notification-led').addEventListener('change', async (event) => {
+  const enabled = event.target.checked;
+  ledSwitchPending = true;
+  try {
+    await api('/api/led', { method: 'POST', body: JSON.stringify({ enabled }) });
+    setMessage(
+      enabled
+        ? t('已开启：收到通知时设备会亮灯。')
+        : t('已关闭：收到通知时设备不再亮灯。'),
+      'success');
+  } catch (error) {
+    event.target.checked = !enabled;
+    setMessage(error.message || t('保存亮灯设置失败。'), 'error');
+  } finally {
+    ledSwitchPending = false;
+  }
+});
 
 $('mqtt-config').addEventListener('submit', async (event) => {
   event.preventDefault();

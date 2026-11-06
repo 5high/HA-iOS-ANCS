@@ -119,8 +119,27 @@ def test_home_assistant_restart_button_is_exact_non_retained_and_subscribed():
     connected = source.split("if (event_id == MQTT_EVENT_CONNECTED)", 1)[1].split(
         "if (event_id == MQTT_EVENT_DATA)", 1
     )[0]
-    assert connected.count("esp_mqtt_client_subscribe") == 2
+    # enroll + restart + led command subscriptions on connect
+    assert connected.count("esp_mqtt_client_subscribe") == 3
     assert "MQTT_RELAY_RESTART_COMMAND_QOS" in connected
+
+
+def test_notification_led_switch_is_a_discovered_mqtt_switch():
+    header = read("include/mqtt_relay.h")
+    source = read("mqtt_relay.c")
+    assert "MQTT_RELAY_EVENT_LED_ON_REQUEST" in header
+    assert "MQTT_RELAY_EVENT_LED_OFF_REQUEST" in header
+    assert "mqtt_relay_build_led_command_topic" in header
+    assert "mqtt_relay_build_led_discovery_topic" in header
+    assert "mqtt_relay_build_led_discovery_payload" in header
+    assert "homeassistant/switch/%s/notification_led/config" in source
+    assert "Notification light" in source
+    assert r'\"payload_on\":\"ON\",\"payload_off\":\"OFF\"' in source
+    # state comes from the retained status payload's notification_led field
+    assert 'notification_led\\":%s' in source
+    assert "mqtt_relay_set_led_enabled" in header
+    assert "provision_store_save_led_enabled(true)" in source
+    assert "provision_store_save_led_enabled(false)" in source
 
 
 def test_offline_no_replay_and_cleanup_paths_are_explicit():

@@ -201,6 +201,21 @@
       </div>
     </form>
 
+    <section class="panel led-panel" aria-labelledby="led-title">
+      <div class="led-copy">
+        <p class="section-kicker">提示灯</p>
+        <h2 id="led-title">收到通知时亮灯</h2>
+        <p>开启后，设备每收到一条 iPhone 通知就播放一次彩灯动画。关闭后保持安静，MQTT 推送与 Home Assistant 集成不受影响。</p>
+      </div>
+      <label class="check-row led-switch" for="notification-led">
+        <input id="notification-led" type="checkbox">
+        <span>
+          <strong>亮灯提示</strong>
+          <small id="notification-led-help">修改后立即生效，无需重新保存 Wi-Fi 设置。</small>
+        </span>
+      </label>
+    </section>
+
     <section class="panel ble-panel" aria-labelledby="ble-title">
       <div class="ble-copy">
         <p class="section-kicker">Bluetooth</p>

@@ -75,6 +75,8 @@ typedef struct {
     uint64_t mqtt_retry_due_ms;
     /* Fingerprint of the last MQTT settings that connected (0: none). */
     uint32_t mqtt_verified_fingerprint;
+    /* Portal toggle: play the RGB animation on incoming notifications. */
+    bool notification_led_enabled;
 } app_coordinator_state_t;
 
 typedef struct {
@@ -84,6 +86,7 @@ typedef struct {
     bool mqtt_started;
     uint8_t mqtt_retry_attempt;
     uint32_t mqtt_retry_delay_ms;
+    bool notification_led_enabled;
 } app_runtime_snapshot_t;
 
 static app_coordinator_state_t s_app;
@@ -240,6 +243,7 @@ static app_runtime_snapshot_t app_runtime_snapshot(void)
     const app_runtime_snapshot_t snapshot = {
         .state = s_app.state,
         .config_valid = s_app.config_valid,
+        .notification_led_enabled = s_app.notification_led_enabled,
         .mqtt_initialized = s_app.mqtt_initialized,
         .mqtt_started = s_app.mqtt_started,
         .mqtt_retry_attempt = s_app.mqtt_retry_attempt,
@@ -294,6 +298,7 @@ static esp_err_t portal_status(portal_http_system_status_t *out, void *context)
         .enrollment_remaining_seconds = ble.enrollment_remaining_seconds,
         .ble_bonded = ble.has_bond,
         .ble_connected = ble.connected,
+        .notification_led_enabled = app.notification_led_enabled,
         .enroll_window_open = ble.enroll_active,
         .ble_passkey = ble.enroll_active
                            ? ancs_client_ble_passkey()
@@ -411,6 +416,19 @@ static esp_err_t portal_reset_provisioning(void *context)
     return app_post(&message) ? ESP_OK : ESP_ERR_TIMEOUT;
 }
 
+static esp_err_t portal_set_led_enabled(bool enabled, void *context)
+{
+    (void)context;
+    /* The relay persists to NVS and refreshes the retained state payload so
+     * the HA switch follows immediately; mirror it into app state for the
+     * notification observer gate. */
+    const esp_err_t error = mqtt_relay_set_led_enabled(enabled);
+    app_state_lock();
+    s_app.notification_led_enabled = enabled;
+    app_state_unlock();
+    return error;
+}
+
 static const portal_http_handlers_t s_portal_handlers = {
     .status = portal_status,
     .mqtt_test = portal_mqtt_test,
@@ -421,6 +439,7 @@ static const portal_http_handlers_t s_portal_handlers = {
     .restart = portal_restart,
     .reset_provisioning = portal_reset_provisioning,
     .reset_all_data = NULL,
+    .set_led_enabled = portal_set_led_enabled,
     .context = NULL,
 };
 
@@ -886,6 +905,15 @@ static void handle_mqtt_event(mqtt_relay_event_t event)
         return;
     }
 
+    if (event == MQTT_RELAY_EVENT_LED_ON_REQUEST ||
+        event == MQTT_RELAY_EVENT_LED_OFF_REQUEST) {
+        app_state_lock();
+        s_app.notification_led_enabled =
+            event == MQTT_RELAY_EVENT_LED_ON_REQUEST;
+        app_state_unlock();
+        return;
+    }
+
     if (event == MQTT_RELAY_EVENT_ENROLL_REQUEST) {
         const esp_err_t error = ancs_client_request_enroll();
         if (error != ESP_OK) {
@@ -1205,7 +1233,8 @@ static void log_error(const char *operation, esp_err_t error)
 /* Notification sink observer: flash the onboard RGB animation on every
  * complete notification, independent of HTTP/MQTT delivery outcome.
  * The sink exposes a single observer slot, so this one fans out to the MQTT
- * relay as well. */
+ * relay as well. The portal's "notification LED" toggle (stored in the
+ * provision config) gates only the light; publishing always continues. */
 static void app_led_observe_notification(
     const ancs_notification_t *notification,
     const char *device_name,
@@ -1215,7 +1244,13 @@ static void app_led_observe_notification(
     if (notification == NULL) {
         return;
     }
-    rgb_led_notify_arrived();
+    bool led_enabled = false;
+    app_state_lock();
+    led_enabled = s_app.notification_led_enabled;
+    app_state_unlock();
+    if (led_enabled) {
+        rgb_led_notify_arrived();
+    }
     mqtt_relay_observe_notification(notification, device_name, NULL);
 }
 
@@ -1249,6 +1284,16 @@ void app_main(void)
     s_app.mqtt_verified_fingerprint = verified_fingerprint;
     app_state_unlock();
 
+    /* The LED toggle lives in its own NVS key: nothing stored yet means the
+     * historical behaviour (light on), so upgrades keep blinking. */
+    bool led_enabled = true;
+    if (provision_store_load_led_enabled(&led_enabled) != ESP_OK) {
+        led_enabled = true;
+    }
+    app_state_lock();
+    s_app.notification_led_enabled = led_enabled;
+    app_state_unlock();
+
     int observer_slot = notification_sink_register_observer(
         app_led_observe_notification, NULL);
     if (observer_slot != 0) {
@@ -1259,6 +1304,8 @@ void app_main(void)
      * cosmetic: a failure here must not stop the notification pipeline. */
     error = rgb_led_init();
     log_error("rgb led init", error);
+
+
 
     error = provisioning_runtime_init(config_valid ? &s_app.config : NULL,
                                       provisioning_event_callback,

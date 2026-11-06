@@ -97,6 +97,15 @@ esp_err_t provision_store_reset(void);
  */
 esp_err_t provision_store_load_mqtt_verified(uint32_t *fingerprint);
 esp_err_t provision_store_save_mqtt_verified(uint32_t fingerprint);
+/*
+ * Notification LED preference (portal toggle). It lives in its own NVS key
+ * instead of the settings blob: the blob is CRC-protected and size-checked,
+ * so growing it would invalidate the configuration already stored on every
+ * deployed unit. Load returns ESP_ERR_NVS_NOT_FOUND when nothing was ever
+ * saved; callers then treat the device as "LED on" (the historical default).
+ */
+esp_err_t provision_store_load_led_enabled(bool *enabled);
+esp_err_t provision_store_save_led_enabled(bool enabled);
 
 esp_err_t provision_store_encode_for_test(
     const provision_config_t *config,

@@ -716,6 +716,44 @@ def test_task7_mutating_handlers_are_ap_local_and_bounded():
     assert "getpeername" not in guard
 
 
+def test_notification_led_toggle_is_persisted_and_gated_end_to_end():
+    """Portal switch -> /api/led -> own NVS key -> observer gate."""
+    portal_html = read("components/portal_http/portal.html")
+    portal_js = read("components/portal_http/portal.js")
+    portal_c = read("components/portal_http/portal_http.c")
+    portal_h = read("components/portal_http/include/portal_http.h")
+    store_h = read("components/provision_store/include/provision_store.h")
+    store_c = read("components/provision_store/provision_store.c")
+    app = read("main/app_main.c")
+
+    # The switch exists on its own panel and posts to /api/led (not /api/config:
+    # toggling the light must not trigger a Wi-Fi/MQTT reconnect).
+    assert 'id="notification-led"' in portal_html
+    assert "api('/api/led'" in portal_js
+    assert "JSON.stringify({ enabled })" in portal_js
+    assert '"/api/led", HTTP_POST, handle_led_post' in portal_c
+
+    # The current state is published through /api/status.
+    assert '"notification_led_enabled"' in portal_c
+    assert "bool notification_led_enabled;" in portal_h
+
+    # Persisted in its own NVS key, never inside the CRC-protected blob.
+    assert "provision_store_load_led_enabled" in store_h
+    assert "provision_store_save_led_enabled" in store_h
+    assert '#define PROVISION_LED_ENABLED_KEY "led_on"' in store_c
+    assert "bool notification_led_enabled;" not in store_h.split(
+        "} provision_config_t;")[0].split("typedef struct {")[-1]
+
+    # The gate reads the stored preference and never blocks MQTT publishing.
+    assert "led_enabled = s_app.notification_led_enabled;" in app
+    assert "provision_store_load_led_enabled(&led_enabled)" in app
+    observe = app[app.index("static void app_led_observe_notification"):
+                  app.index("void app_main(void)")]
+    assert "if (led_enabled)" in observe
+    assert observe.index("if (led_enabled)") < observe.index(
+        "mqtt_relay_observe_notification")
+
+
 def test_task7_secret_redaction_and_confirmations():
     source = read("components/portal_http/portal_http.c")
     header = read("components/portal_http/include/portal_http.h")
