@@ -208,16 +208,28 @@ h3 {
   gap: 10px;
 }
 
+.status-grid > * {
+  min-width: 0;
+}
+
 .status-tile {
   display: grid;
   grid-template-columns: 10px minmax(0, 1fr);
   align-items: start;
   gap: 10px;
+  min-width: 0;
   min-height: 102px;
   padding: 14px;
   border: 1px solid var(--color-border);
   border-radius: 13px;
   background: #fbfcfd;
+}
+
+/* Grid/flex items default to min-width:auto, which refuses to shrink below
+   the content's min-content width. A long SSID or broker hostname then pushes
+   the tile (and the whole page) past the viewport on iOS WebKit. */
+.status-tile > * {
+  min-width: 0;
 }
 
 .status-dot {
@@ -232,6 +244,11 @@ h3 {
 .status-tile strong,
 .status-tile small {
   display: block;
+}
+
+.status-tile strong,
+.status-tile small {
+  overflow-wrap: anywhere;
 }
 
 .status-label {
@@ -289,9 +306,18 @@ h3 {
   border-top: 1px solid var(--color-border);
 }
 
+.status-actions > * {
+  min-width: 0;
+}
+
 .status-actions strong,
 .status-actions small {
   display: block;
+}
+
+.status-actions strong,
+.status-actions small {
+  overflow-wrap: anywhere;
 }
 
 .status-actions strong {
@@ -583,6 +609,16 @@ summary:focus-visible {
   cursor: pointer;
 }
 
+.check-row > * {
+  min-width: 0;
+}
+
+.check-row strong,
+.check-row small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
 .check-row input {
   width: 20px;
   min-height: 20px;
@@ -593,6 +629,7 @@ summary:focus-visible {
 .check-row strong,
 .check-row small {
   display: block;
+  overflow-wrap: anywhere;
 }
 
 .check-row strong {
@@ -859,7 +896,7 @@ footer .local-dot {
   }
 
   .status-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .status-tile {
