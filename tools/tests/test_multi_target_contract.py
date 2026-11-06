@@ -5,6 +5,17 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def _cmake_version() -> str:
+    cmake = (ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
+    match = re.search(r'set\(PROJECT_VER\s+"([\d.]+)"\)', cmake)
+    if not match:
+        raise AssertionError("PROJECT_VER not found in CMakeLists.txt")
+    return match.group(1)
+
+
+VERSION = _cmake_version()
 IDENTITY_HEADER = (
     ROOT / "components" / "platform_identity" / "include" / "platform_identity.h"
 )
@@ -209,7 +220,7 @@ def test_unified_manifest_has_unique_builds_and_existing_binaries():
     builds = manifest["builds"]
     families = [build["chipFamily"] for build in builds]
 
-    assert manifest["version"] == "0.4.3"
+    assert manifest["version"] == VERSION
     assert len(families) == 7
     assert len(families) == len(set(families))
     assert "ESP32" in families
@@ -221,7 +232,7 @@ def test_unified_manifest_has_unique_builds_and_existing_binaries():
         assert len(build["parts"]) == 1
         part = build["parts"][0]
         assert part["offset"] == 0
-        assert "-v0.4.3.factory.bin" in part["path"]
+        assert f"-v{VERSION}.factory.bin" in part["path"]
         binary = (MULTI_MANIFEST.parent / part["path"]).resolve()
         assert binary.is_file()
         assert binary.stat().st_size > 0
@@ -244,9 +255,9 @@ def test_c6_manifest_points_existing_users_to_current_image():
     part = build["parts"][0]
     binary = (LEGACY_C6_MANIFEST.parent / part["path"]).resolve()
 
-    assert manifest["version"] == "0.4.3"
+    assert manifest["version"] == VERSION
     assert build["chipFamily"] == "ESP32-C6"
-    assert part["path"] == "../firmware/esp32c6/ios-ancs-esp32c6-v0.4.3.factory.bin"
+    assert part["path"] == f"../firmware/esp32c6/ios-ancs-esp32c6-v{VERSION}.factory.bin"
     assert binary.is_file()
     assert not (
         ROOT
@@ -318,7 +329,7 @@ def test_v034_release_guidance_documents_compact_home_assistant_entities():
 
     cmake = read(ROOT / "CMakeLists.txt")
     for source in (cmake, matrix, build_ps1, build_sh, installer):
-        assert "0.4.3" in source
+        assert VERSION in source
     for source in (readme, pairing, troubleshooting):
         assert "iosmsg-<lowercase_suffix>" in source
         assert "case-sensitive" in source

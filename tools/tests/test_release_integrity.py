@@ -5,7 +5,19 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-VERSION = "0.4.3"
+
+
+def _cmake_version() -> str:
+    """Derive the release version from CMakeLists.txt so a bump
+    doesn't require hand-editing every contract test."""
+    cmake = (ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
+    match = re.search(r'set\(PROJECT_VER\s+"([\d.]+)"\)', cmake)
+    if not match:
+        raise AssertionError("PROJECT_VER not found in CMakeLists.txt")
+    return match.group(1)
+
+
+VERSION = _cmake_version()
 EXPECTED_TARGETS = (
     ("ESP32", "esp32"),
     ("ESP32-C2", "esp32c2"),
@@ -53,16 +65,17 @@ def release_builds() -> list[tuple[str, str, Path]]:
 
 
 def test_v034_version_anchors_are_on_release_surfaces():
+    v = VERSION
     checks = {
-        "CMakeLists.txt": 'set(PROJECT_VER "0.4.3")',
-        "tools/build.ps1": "[string]$Version = '0.4.3'",
-        "tools/build.sh": 'version="${VERSION:-0.4.3}"',
-        "tools/build_matrix.ps1": "[string]$Version = '0.4.3'",
-        "docs/manifests/ios-ancs.json": '"version": "0.4.3"',
-        "docs/manifests/esp32-c6.json": '"version": "0.4.3"',
-        "README.en.md": "All v0.4.3 images shown in the installer",
-        "docs/index.html": '<dd id="hero-version">v0.4.3</dd>',
-        "docs/app.js": 'validation: "v0.4.3',
+        "CMakeLists.txt": f'set(PROJECT_VER "{v}")',
+        "tools/build.ps1": f"[string]$Version = '{v}'",
+        "tools/build.sh": f'version="${{VERSION:-{v}}}"',
+        "tools/build_matrix.ps1": f"[string]$Version = '{v}'",
+        "docs/manifests/ios-ancs.json": f'"version": "{v}"',
+        "docs/manifests/esp32-c6.json": f'"version": "{v}"',
+        "README.en.md": f"All v{v} images shown in the installer",
+        "docs/index.html": f'<dd id="hero-version">v{v}</dd>',
+        "docs/app.js": f'validation: "v{v}',
     }
     for relative_path, anchor in checks.items():
         assert anchor in read_text(ROOT / relative_path), relative_path
