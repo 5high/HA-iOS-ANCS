@@ -6,7 +6,7 @@ const boards = {
     validation: "v0.4.3 build verified",
     status: "BUILD VERIFIED",
     description: "v0.4.3 ANCS-to-MQTT factory build for the ESP32/WROOM-32 family.",
-    hash: "SHA256 432F32F718A6",
+    hash: "SHA256 71DBE54B7355",
   },
   esp32c2: {
     chip: "C2",
@@ -15,7 +15,7 @@ const boards = {
     validation: "v0.4.3 build verified",
     status: "BUILD VERIFIED",
     description: "v0.4.3 ANCS-to-MQTT factory build for the ESP32-C2 family.",
-    hash: "SHA256 F5002A46E611",
+    hash: "SHA256 3098278232EE",
   },
   esp32c3: {
     chip: "C3",
@@ -24,7 +24,7 @@ const boards = {
     validation: "v0.4.3 build verified",
     status: "BUILD VERIFIED",
     description: "v0.4.3 ANCS-to-MQTT factory build for the ESP32-C3 family.",
-    hash: "SHA256 C8E52B4A6EDF",
+    hash: "SHA256 472C5B3FBE27",
   },
   esp32c5: {
     chip: "C5",
@@ -33,7 +33,7 @@ const boards = {
     validation: "v0.4.3 build verified",
     status: "BUILD VERIFIED",
     description: "v0.4.3 ANCS-to-MQTT factory build for the ESP32-C5 family.",
-    hash: "SHA256 79A4AA8EBAF1",
+    hash: "SHA256 FBEF8F9FD6B4",
   },
   esp32c6: {
     chip: "C6",
@@ -42,7 +42,7 @@ const boards = {
     validation: "v0.4.3 build verified",
     status: "BUILD VERIFIED",
     description: "v0.4.3 ANCS-to-MQTT factory build for the ESP32-C6 family.",
-    hash: "SHA256 21A84F8BB923",
+    hash: "SHA256 13C70764BFD3",
   },
   esp32c61: {
     chip: "C61",
@@ -52,7 +52,7 @@ const boards = {
     status: "BUILD VERIFIED",
     description:
       "The ESP32-C61 is a separate newer chip, not a revision of the ESP32-C6. Select it only when the board is actually marked C61.",
-    hash: "SHA256 C5E65DBF8CE6",
+    hash: "SHA256 482BD39BDE18",
   },
   esp32s3: {
     chip: "S3",
@@ -61,7 +61,7 @@ const boards = {
     validation: "v0.4.3 build verified",
     status: "BUILD VERIFIED",
     description: "v0.4.3 ANCS-to-MQTT factory build for the ESP32-S3 family.",
-    hash: "SHA256 46588C203C36",
+    hash: "SHA256 AB059AF338CE",
   },
 };
 

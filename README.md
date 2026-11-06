@@ -77,13 +77,13 @@ iPhone → BLE ANCS → ESP32 → Wi-Fi/MQTT → Home Assistant
 
 | Target | 常见模块/板型 | Factory 镜像 | v0.4.3 状态 |
 | --- | --- | ---: | --- |
-| `esp32` | ESP32-WROOM-32 / WROOM-D32 | 1,496,480 bytes | 构建已验证 · 本版本未实机验证 |
-| `esp32c2` | ESP32-C2 | 1,499,888 bytes | 构建已验证 · 本版本未实机验证（本版本起无板载 RGB，RMT 缺失自动禁用） |
-| `esp32c3` | ESP32-C3 | 1,710,672 bytes | 构建已验证 · 本版本未实机验证 |
-| `esp32c5` | ESP32-C5 | 1,854,704 bytes | 构建已验证 · 本版本未实机验证 |
-| `esp32c6` | ESP32-C6 | 1,856,000 bytes | 构建已验证 · 本版本未实机验证 |
-| `esp32c61` | ESP32-C61 | 1,777,184 bytes | 构建已验证 · 本版本未实机验证（本版本起无板载 RGB，RMT 缺失自动禁用） |
-| `esp32s3` | ESP32-S3 | 1,485,984 bytes | 构建已验证 · 本版本已实机刷写（DevKitC-1 v1.0：单颗 WS2812 通知灯效、配置保存修复） |
+| `esp32` | ESP32-WROOM-32 / WROOM-D32 | 1,540,880 bytes | Build verified; this version not hardware validated |
+| `esp32c2` | ESP32-C2 | 1,568,048 bytes | Build verified; this version not hardware validated |
+| `esp32c3` | ESP32-C3 | 1,778,816 bytes | Build verified; this version not hardware validated |
+| `esp32c5` | ESP32-C5 | 1,914,656 bytes | Build verified; this version not hardware validated |
+| `esp32c6` | ESP32-C6 | 1,924,160 bytes | Build verified; this version not hardware validated |
+| `esp32c61` | ESP32-C61 | 1,845,328 bytes | Build verified; this version not hardware validated |
+| `esp32s3` | ESP32-S3 | 1,553,648 bytes | Build verified; this version not hardware validated |
 
 表中状态基于本地 v0.4.3 构建（CI 矩阵同配置）。构建验证、实机刷写、BLE 注册、iPhone 通知接收是不同层级的验证；没有实机结果的板型只标注构建已验证。
 
