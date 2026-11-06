@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 import subprocess
 import textwrap
@@ -877,3 +878,49 @@ def test_provisioning_runtime_exposes_non_secret_wifi_snapshot():
     assert "esp_netif_get_ip_info" in getter
     assert "esp_ip4addr_ntoa" in getter
     assert "password" not in getter
+
+
+def test_portal_grid_tracks_cannot_be_widened_by_long_content():
+    """Grid containers must declare shrinkable tracks.
+
+    A single-column ``display: grid`` container without ``grid-template-columns``
+    gets an implicit ``auto`` track whose minimum size is the content's
+    min-content width. When a long Chinese sentence cannot be broken (iOS
+    WebKit keeps ``word-break: keep-all`` runs on one line), that track grows
+    past the panel and drags its siblings -- including the enrollment button --
+    outside the panel border, where the phone viewport clips it.
+    """
+    css = read("components/portal_http/portal.css")
+
+    rules = {}
+    for match in re.finditer(r"([^{}]+)\{([^{}]*)\}", css):
+        selector = match.group(1).strip().splitlines()[-1].strip()
+        body = match.group(2)
+        if "display: grid" in body:
+            rules.setdefault(selector, []).append(body)
+
+    # Containers that stack a single column of free-form text.
+    shrinkable = [
+        ".ble-panel",
+        ".led-panel",
+        ".field-grid",
+        ".form-actions",
+        ".management-item",
+        ".ble-enroll-actions",
+    ]
+    for selector in shrinkable:
+        bodies = rules.get(selector)
+        assert bodies, f"{selector} must stay a grid container"
+        assert any(
+            "grid-template-columns" in body and "minmax(0" in body
+            for body in bodies
+        ), f"{selector} needs grid-template-columns with minmax(0, ...) so long text cannot widen the track"
+
+    # The enrollment button column must not use a percentage min-width: inside a
+    # grid item the percentage resolves against the track, so it grows with it.
+    enroll = rules[".ble-enroll-actions"][0]
+    assert "min-width: min(100%" not in enroll
+    assert "max-width" in enroll
+
+    # Long Chinese copy must still be allowed to wrap as a last resort.
+    assert "overflow-wrap: anywhere" in css

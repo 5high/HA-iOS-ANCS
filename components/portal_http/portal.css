@@ -28,6 +28,7 @@
 body {
   min-width: 320px;
   margin: 0;
+  overflow-x: hidden;
   background:
     radial-gradient(circle at 50% 0, rgba(23, 105, 224, 0.08), transparent 340px),
     var(--color-page);
@@ -99,6 +100,7 @@ h3 {
   color: var(--color-muted);
   line-height: 1.55;
   word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .device-line {
@@ -337,6 +339,7 @@ h3 {
   font-size: 0.86rem;
   line-height: 1.5;
   word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .step-number {
@@ -367,6 +370,7 @@ h3 {
 
 .field-grid {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
 }
 
@@ -638,16 +642,19 @@ summary:focus-visible {
 
 .form-actions {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
 }
 
 .ble-panel {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
 }
 
 .led-panel {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
 }
 
@@ -655,7 +662,12 @@ summary:focus-visible {
   margin-bottom: 8px;
 }
 
+.led-copy p {
+  overflow-wrap: anywhere;
+}
+
 .led-switch {
+  width: 100%;
   max-width: 420px;
 }
 
@@ -665,8 +677,10 @@ summary:focus-visible {
 
 .ble-enroll-actions {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
-  min-width: min(100%, 220px);
+  width: 100%;
+  max-width: 220px;
 }
 
 .ble-enroll-code {
@@ -718,6 +732,7 @@ summary:focus-visible {
 
 .management-item {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   padding: 18px 0;
   border-top: 1px solid var(--color-border);
@@ -802,6 +817,10 @@ footer .local-dot {
 
   .ble-panel .button {
     min-width: 170px;
+  }
+
+  .ble-enroll-actions {
+    max-width: none;
   }
 
   .management-item {
