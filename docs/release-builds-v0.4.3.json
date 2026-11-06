@@ -1,10 +1,10 @@
 {
-  "version": "0.4.2",
+  "version": "0.4.3",
   "source_commit": "9591025f33ef69df74aab71e3c77b7c3cf1b0d20",
   "builds": [
     {
       "target": "esp32",
-      "version": "0.4.2",
+      "version": "0.4.3",
       "source_commit": "ba2d5ff454f2e77ca2b6eb3002de583adfc6f182",
       "idf_version": "v6.0.2",
       "factory_file": "ios-ancs-esp32-v0.4.2.factory.bin",
@@ -21,7 +21,7 @@
     },
     {
       "target": "esp32c2",
-      "version": "0.4.2",
+      "version": "0.4.3",
       "source_commit": "ba2d5ff454f2e77ca2b6eb3002de583adfc6f182",
       "idf_version": "v6.0.2",
       "factory_file": "ios-ancs-esp32c2-v0.4.2.factory.bin",
@@ -38,7 +38,7 @@
     },
     {
       "target": "esp32c3",
-      "version": "0.4.2",
+      "version": "0.4.3",
       "source_commit": "ba2d5ff454f2e77ca2b6eb3002de583adfc6f182",
       "idf_version": "v6.0.2",
       "factory_file": "ios-ancs-esp32c3-v0.4.2.factory.bin",
@@ -55,7 +55,7 @@
     },
     {
       "target": "esp32c5",
-      "version": "0.4.2",
+      "version": "0.4.3",
       "source_commit": "ba2d5ff454f2e77ca2b6eb3002de583adfc6f182",
       "idf_version": "v6.0.2",
       "factory_file": "ios-ancs-esp32c5-v0.4.2.factory.bin",
@@ -72,7 +72,7 @@
     },
     {
       "target": "esp32c6",
-      "version": "0.4.2",
+      "version": "0.4.3",
       "source_commit": "ba2d5ff454f2e77ca2b6eb3002de583adfc6f182",
       "idf_version": "v6.0.2",
       "factory_file": "ios-ancs-esp32c6-v0.4.2.factory.bin",
@@ -89,7 +89,7 @@
     },
     {
       "target": "esp32c61",
-      "version": "0.4.2",
+      "version": "0.4.3",
       "source_commit": "ba2d5ff454f2e77ca2b6eb3002de583adfc6f182",
       "idf_version": "v6.0.2",
       "factory_file": "ios-ancs-esp32c61-v0.4.2.factory.bin",
@@ -106,7 +106,7 @@
     },
     {
       "target": "esp32s3",
-      "version": "0.4.2",
+      "version": "0.4.3",
       "source_commit": "ba2d5ff454f2e77ca2b6eb3002de583adfc6f182",
       "idf_version": "v6.0.2",
       "factory_file": "ios-ancs-esp32s3-v0.4.2.factory.bin",
