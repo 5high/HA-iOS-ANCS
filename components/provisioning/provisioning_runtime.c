@@ -19,6 +19,35 @@
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "lwip/inet.h"
+#include "apps/esp_sntp.h"
+
+/* Wall-clock readiness for ANCS replay suppression: once SNTP lands we can
+ * compare iOS notification Date attributes against real time. */
+static bool s_time_synced;
+
+static void sntp_time_synced(struct timeval *tv)
+{
+    (void)tv;
+    if (s_time_synced) {
+        return;
+    }
+    s_time_synced = true;
+    ESP_LOGI("ancs_provisioning", "SNTP time synchronized");
+}
+
+bool provisioning_runtime_time_synced(void)
+{
+    return s_time_synced;
+}
+
+static void sntp_arm(void)
+{
+    esp_sntp_stop();
+    esp_sntp_setoperatingmode(ESP_SNTP_OPMODE_POLL);
+    esp_sntp_setservername(0, "pool.ntp.org");
+    esp_sntp_set_time_sync_notification_cb(sntp_time_synced);
+    esp_sntp_init();
+}
 
 /* Channel 1: the office 2.4 GHz RF is dominated by ch6/ch11 corporate
  * APs; a lone softAP beacon on ch6 gets buried and client scans miss it
@@ -485,6 +514,12 @@ static void wifi_event_handler(void *arg,
             publish = PROVISION_EVENT_WIFI_CONNECTED;
         }
         unlock_state();
+        if (notify && !s_time_synced) {
+            /* Fire-and-forget SNTP against the pool; re-armed on every fresh
+             * IP so repeat outages recover. Notification callback flips the
+             * wall-clock flag consumed by ANCS replay suppression. */
+            sntp_arm();
+        }
     }
     unlock_wifi_operation();
     cancel_wifi_timeout(); /* Wake the owner; no timer is re-armed here. */

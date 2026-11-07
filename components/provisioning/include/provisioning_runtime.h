@@ -73,6 +73,11 @@ esp_err_t provisioning_runtime_notify_mqtt_connected(void);
 esp_err_t provisioning_runtime_get_status(provisioning_runtime_status_t *out);
 esp_err_t provisioning_runtime_get_wifi_snapshot(provisioning_wifi_snapshot_t *out);
 
+/* True once SNTP has set the system wall clock. ANCS uses this to decide
+ * whether iOS notification Date attributes can be trusted for replay
+ * suppression. */
+bool provisioning_runtime_time_synced(void);
+
 #ifdef __cplusplus
 }
 #endif
