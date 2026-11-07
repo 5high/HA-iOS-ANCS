@@ -32,7 +32,7 @@ static void sntp_time_synced(struct timeval *tv)
         return;
     }
     s_time_synced = true;
-    ESP_LOGI(TAG, "SNTP time synchronized");
+    ESP_LOGI("ancs_provisioning", "SNTP time synchronized");
 }
 
 bool provisioning_runtime_time_synced(void)
