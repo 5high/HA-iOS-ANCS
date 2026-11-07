@@ -21,6 +21,8 @@
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_timer.h"
+#include "provisioning_runtime.h"
+#include <time.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
@@ -39,7 +41,7 @@
 #define ADV_DATA_PENDING (1U << 0)
 #define SCAN_RESPONSE_PENDING (1U << 1)
 #define CONTROL_REQUEST_MAX (CONFIG_ANCS_APP_ID_MAX + 3U)
-#define ADVERTISING_BACKOFF_MAX_MS 4000U
+#define ADVERTISING_BACKOFF_MAX_MS 30000U
 #define DISCOVERY_BACKOFF_MAX_MS 5000U
 #define AUTH_FAILURE_REPAIR_THRESHOLD 3U
 #define AUTH_FAILURE_WINDOW_MS 120000LL
@@ -149,6 +151,17 @@ typedef struct {
     uint32_t discovery_retry_generation;
     uint16_t pending_notify_handle;
     uint32_t pending_notify_generation;
+
+    /* Wall-clock (UTC epoch ms) at which Notification Source was
+     * subscribed for this connection, valid only once SNTP has landed
+     * (wall_clock_valid). iOS replays every notification that is still
+     * sitting in the phone's Notification Center as a fresh Added event the
+     * moment we subscribe after a reconnect; those replays carry a Date
+     * attribute from when they originally arrived, so anything dated before
+     * this instant is a pre-existing notification and must not re-trigger
+     * LED/MQTT. Zero means "no valid cutoff". */
+    int64_t source_subscribed_at_ms;
+    bool wall_clock_valid;
 
     bool advertising;
     bool advertising_starting;
@@ -479,6 +492,8 @@ static void invalidate_ancs_handles_locked(void)
     s_client.ready = false;
     s_client.data_source_subscribed = false;
     s_client.notification_source_subscribed = false;
+    s_client.source_subscribed_at_ms = 0;
+    s_client.wall_clock_valid = false;
     s_client.service_start_handle = INVALID_HANDLE;
     s_client.service_end_handle = INVALID_HANDLE;
     s_client.notification_source_handle = INVALID_HANDLE;
@@ -602,8 +617,99 @@ static void fail_active_request(int error_code)
     s_worker.active_canceled = false;
 }
 
+/* iOS Date attribute as observed on real devices is compact UTC:
+ * "YYYYMMDDTHHMMSS" (e.g. "20261107T000213"). We never need the exact
+ * instant — only whether the notification predates our Notification Source
+ * subscription, i.e. it was already sitting in Notification Center when we
+ * connected and iOS replayed it as a fresh Added event. A malformed or
+ * missing Date is treated as new so a real notification is never silently
+ * dropped. */
+static bool date_predates_subscription(const char *date_raw, int64_t cutoff_ms)
+{
+    int year = -1;
+    int month = -1;
+    int day = -1;
+    int hour = -1;
+    int minute = -1;
+    int second = -1;
+    if (date_raw == NULL || cutoff_ms <= 0) {
+        return false;
+    }
+    /* Strict canonical form: exactly "YYYYMMDDTHHMMSS" (15 chars). */
+    if (strlen(date_raw) != 15 || date_raw[8] != 'T') {
+        return false;
+    }
+    /* Fixed-width manual parse: strictly digits at every field position of
+     * "YYYYMMDDTHHMMSS" (year 0-3, month 4-5, day 6-7, hour 9-10,
+     * minute 11-12, second 13-14). */
+    int value = 0;
+    for (int offset = 0; offset < 4; ++offset) {
+        const char c = date_raw[offset];
+        if (c < '0' || c > '9') {
+            return false;
+        }
+        value = value * 10 + (c - '0');
+    }
+    year = value;
+    int parsed[5];
+    const int starts[5] = { 4, 6, 9, 11, 13 };
+    for (int field = 0; field < 5; ++field) {
+        value = 0;
+        for (int offset = 0; offset < 2; ++offset) {
+            const char c = date_raw[starts[field] + offset];
+            if (c < '0' || c > '9') {
+                return false;
+            }
+            value = value * 10 + (c - '0');
+        }
+        parsed[field] = value;
+    }
+    month = parsed[0];
+    day = parsed[1];
+    hour = parsed[2];
+    minute = parsed[3];
+    second = parsed[4];
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59 || second < 0 ||
+        second > 61 || day < 1 || day > 31 || month < 1 || month > 12 ||
+        year < 2020 || year > 2099) {
+        return false;
+    }
+
+    /* Days since civil epoch 1970-01-01 (Howard Hinnant's algorithm). */
+    const int64_t y = year - (month <= 2 ? 1 : 0);
+    const int64_t era = (y >= 0 ? y : y - 399) / 400;
+    const uint64_t yoe = (uint64_t)(y - era * 400);
+    const uint64_t doy = (153U * (uint64_t)(month + (month > 2 ? -3 : 9)) + 2U) / 5U +
+                         (uint64_t)(day - 1);
+    const uint64_t doe = yoe * 365U + yoe / 4U - yoe / 100U + doy;
+    const int64_t days = era * 146097LL + (int64_t)doe - 719468LL;
+
+    /* Both sides are UTC epoch ms: the Date attribute is phone UTC and the
+     * cutoff is the SNTP-synced wall clock captured at subscription time
+     * (callers guarantee a synced clock before invoking this comparison).
+     * A one-minute allowance absorbs small phone/device skew for
+     * notifications that arrive right at connect time. */
+
+#define ANCS_DATE_SKEW_ALLOWANCE_MS (60LL * 1000LL)
+    const int64_t epoch_ms =
+        (days * 86400LL + hour * 3600LL + minute * 60LL + second) * 1000LL;
+    return epoch_ms < cutoff_ms - ANCS_DATE_SKEW_ALLOWANCE_MS;
+#undef ANCS_DATE_SKEW_ALLOWANCE_MS
+}
+
 static void finalize_active_notification(void)
 {
+    if (s_worker.active_notification.event_id <= 1U &&
+        s_client.wall_clock_valid &&
+        s_client.source_subscribed_at_ms > 0 &&
+        date_predates_subscription(s_worker.active_notification.date_raw,
+                                   s_client.source_subscribed_at_ms)) {
+        s_worker.active_notification.event_flags |= ANCS_EVENT_FLAG_PRE_EXISTING;
+        ESP_LOGI(TAG,
+                 "replay suppressed uid=%" PRIu32 " date=\"%s\"",
+                 s_worker.active_notification.uid,
+                 s_worker.active_notification.date_raw);
+    }
     (void)notification_sink_publish(
         &s_worker.active_notification, s_client.device_name);
     cache_store(&s_worker.active_notification);
@@ -1162,6 +1268,8 @@ static void start_discovery(void)
     s_client.data_source_subscribed = false;
     s_client.notification_source_subscribed = false;
     s_client.notification_source_handle = INVALID_HANDLE;
+    s_client.source_subscribed_at_ms = 0;
+    s_client.wall_clock_valid = false;
     s_client.data_source_handle = INVALID_HANDLE;
     s_client.control_point_handle = INVALID_HANDLE;
     s_client.data_source_cccd_handle = INVALID_HANDLE;
@@ -1946,6 +2054,21 @@ static void handle_gattc_event(esp_gattc_cb_event_t event,
                 s_client.data_source_subscribed;
             if (ready && !s_client.ready) {
                 ++s_client.session_id;
+                /* Fresh subscription point: iOS replays the whole
+                 * Notification Center queue right after we subscribe, so
+                 * everything dated before this instant is pre-existing.
+                 * Only meaningful once SNTP has set the wall clock. */
+                if (provisioning_runtime_time_synced()) {
+                    const time_t now_epoch = time(NULL);
+                    s_client.wall_clock_valid = now_epoch > 1600000000;
+                    s_client.source_subscribed_at_ms =
+                        s_client.wall_clock_valid
+                            ? (int64_t)now_epoch * 1000LL
+                            : 0;
+                } else {
+                    s_client.wall_clock_valid = false;
+                    s_client.source_subscribed_at_ms = 0;
+                }
             }
             s_client.ready = ready;
             s_client.stage_deadline_ms = 0;

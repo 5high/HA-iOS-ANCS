@@ -1244,6 +1244,12 @@ static void app_led_observe_notification(
     if (notification == NULL) {
         return;
     }
+    /* iOS replays the whole Notification Center queue on every (re)connect;
+     * those carry ANCS_EVENT_FLAG_PRE_EXISTING and are pure state sync — no
+     * light show, no MQTT publish (relay policy drops them too). */
+    if ((notification->event_flags & ANCS_EVENT_FLAG_PRE_EXISTING) != 0U) {
+        return;
+    }
     bool led_enabled = false;
     app_state_lock();
     led_enabled = s_app.notification_led_enabled;
