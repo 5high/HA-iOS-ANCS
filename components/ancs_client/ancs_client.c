@@ -200,6 +200,21 @@ typedef struct {
     int64_t last_event_ms;
     uint32_t cache_age;
     cache_entry_t cache[CONFIG_ANCS_CACHE_CAPACITY];
+
+    /* Wall-clock cutoff captured when Notification Source became ready for
+     * this connection. Cached here (worker-task-private, no lock needed) so
+     * Added events can be classified as iOS replays *before* we spend a
+     * Control Point round-trip on them. Zero means "no valid cutoff". */
+    int64_t replay_cutoff_ms;
+
+    /* uid values whose attributes were already fetched and dated before the
+     * cutoff in this connection. iOS keeps re-replaying the same Notification
+     * Center entries on every reconnect, so remembering which uids are stale
+     * lets us drop them without a round-trip even when our cache is small. */
+    uint32_t replay_uids[CONFIG_ANCS_REPLAY_UID_CACHE_CAPACITY];
+    uint32_t replay_uid_age[CONFIG_ANCS_REPLAY_UID_CACHE_CAPACITY];
+    uint32_t replay_uid_next;
+    uint32_t replay_uid_clock;
 } worker_context_t;
 
 static client_context_t s_client = {
@@ -531,6 +546,51 @@ static bool enqueue_work(const work_item_t *item)
     return true;
 }
 
+static void replay_uid_remember(uint32_t uid)
+{
+#if CONFIG_ANCS_REPLAY_UID_CACHE_CAPACITY > 0
+    for (size_t index = 0;
+         index < CONFIG_ANCS_REPLAY_UID_CACHE_CAPACITY; ++index) {
+        if (s_worker.replay_uids[index] == uid &&
+            s_worker.replay_uid_age[index] != 0U) {
+            s_worker.replay_uid_age[index] = ++s_worker.replay_uid_clock;
+            return;
+        }
+    }
+    const size_t slot = s_worker.replay_uid_next %
+                        CONFIG_ANCS_REPLAY_UID_CACHE_CAPACITY;
+    s_worker.replay_uid_next = (uint32_t)(slot + 1U);
+    s_worker.replay_uids[slot] = uid;
+    s_worker.replay_uid_age[slot] = ++s_worker.replay_uid_clock;
+#else
+    (void)uid;
+#endif
+}
+
+static bool replay_uid_known(uint32_t uid)
+{
+#if CONFIG_ANCS_REPLAY_UID_CACHE_CAPACITY > 0
+    for (size_t index = 0;
+         index < CONFIG_ANCS_REPLAY_UID_CACHE_CAPACITY; ++index) {
+        if (s_worker.replay_uid_age[index] != 0U &&
+            s_worker.replay_uids[index] == uid) {
+            return true;
+        }
+    }
+#else
+    (void)uid;
+#endif
+    return false;
+}
+
+static void replay_uid_forget_all(void)
+{
+    memset(s_worker.replay_uids, 0, sizeof(s_worker.replay_uids));
+    memset(s_worker.replay_uid_age, 0, sizeof(s_worker.replay_uid_age));
+    s_worker.replay_uid_next = 0U;
+    s_worker.replay_uid_clock = 0U;
+}
+
 static void reset_worker_session(uint32_t generation)
 {
     s_worker.generation = generation;
@@ -544,6 +604,10 @@ static void reset_worker_session(uint32_t generation)
     ancs_app_resolver_init(&s_worker.app_resolver);
     s_worker.cache_age = 0U;
     memset(s_worker.cache, 0, sizeof(s_worker.cache));
+    /* A new connection means a fresh Notification Source subscription and a
+     * fresh replay window: the old cutoff no longer applies. uids already
+     * proven stale stay remembered — iOS replays the same entries again. */
+    s_worker.replay_cutoff_ms = 0;
     ESP_LOGI(TAG, "worker session reset generation=%" PRIu32, generation);
 }
 
@@ -705,6 +769,11 @@ static void finalize_active_notification(void)
         date_predates_subscription(s_worker.active_notification.date_raw,
                                    s_client.source_subscribed_at_ms)) {
         s_worker.active_notification.event_flags |= ANCS_EVENT_FLAG_PRE_EXISTING;
+        /* Remember the cutoff and this uid so the next reconnect's replay of
+         * the same entry is dropped before we spend a Control Point request
+         * on it. */
+        replay_uid_remember(s_worker.active_notification.uid);
+        s_worker.replay_cutoff_ms = s_client.source_subscribed_at_ms;
         ESP_LOGI(TAG,
                  "replay suppressed uid=%" PRIu32 " date=\"%s\"",
                  s_worker.active_notification.uid,
@@ -848,7 +917,16 @@ static void retry_or_finish_active(int error_code, bool recover_stream)
     }
 
     fail_active_request(error_code);
-    recover_data_stream();
+    /* A timed-out attribute request is not a broken link: iOS simply did not
+     * answer for this one uid (typically because it is mid-replay and busy).
+     * Only a malformed Data Source stream justifies dropping the connection —
+     * tearing it down re-triggers the full Notification Center replay, which
+     * overflows our queues again and loops forever. Callers pass
+     * recover_stream=true only from the parser-error path; timeouts pass it
+     * too but are excluded here. */
+    if (recover_stream && error_code != ANCS_PROTOCOL_ERR_TIMEOUT) {
+        recover_data_stream();
+    }
 }
 
 static void begin_app_name_resolution(void)
@@ -947,6 +1025,31 @@ static void process_notification_event(const ancs_notification_event_t *event)
             s_worker.active_canceled = true;
         }
         publish_removed(event);
+        return;
+    }
+
+    /* iOS replays its whole Notification Center as fresh Added events every
+     * time we subscribe to Notification Source after a reconnect. Fetching
+     * attributes for all of them overflows the request/work queues, and one
+     * timed-out Control Point request tears the link down via
+     * recover_data_stream() — which triggers another replay, forever. Once we
+     * have seen (and dated) a replayed entry in this connection, drop its
+     * repeats before queueing them: no Control Point round-trip, no overflow.
+     * A brand-new notification carries a uid we have never seen, so it is
+     * never dropped here. */
+    if (event->event_id <= 1U && replay_uid_known(event->uid)) {
+        ESP_LOGI(TAG, "replay pre-filtered uid=%" PRIu32, event->uid);
+        return;
+    }
+
+    /* Backpressure: while the pending queue is saturated we are already
+     * behind on attribute fetches. Replays arrive as one huge burst at
+     * subscribe time, so shedding new work here (instead of failing it later
+     * with a timeout that drops the whole link) keeps the Control Point
+     * pipeline drained at its own pace. */
+    if (event->event_id <= 1U &&
+        s_worker.pending.count >= CONFIG_ANCS_REQUEST_QUEUE_CAPACITY) {
+        ESP_LOGI(TAG, "replay shed (queue full) uid=%" PRIu32, event->uid);
         return;
     }
 

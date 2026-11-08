@@ -25,6 +25,11 @@ config ANCS_CACHE_CAPACITY
     default 4
     range 1 8
 
+config ANCS_REPLAY_UID_CACHE_CAPACITY
+    int "Remembered pre-existing (replayed) uid slots"
+    default 64
+    range 0 256
+
 config ANCS_DUPLICATE_WINDOW_MS
     int "Exact Notification Source duplicate window"
     default 500
