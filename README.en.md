@@ -51,13 +51,13 @@ The shared firmware uses a 4 MB minimum flash layout. All v0.4.6 images shown in
 
 | Target | Typical module/board | Factory image | v0.4.0 status |
 | --- | --- | ---: | --- |
-| `esp32` | ESP32-WROOM-32 / WROOM-D32 | 1,540,880 bytes | Build verified; this version not hardware validated |
-| `esp32c2` | ESP32-C2 | 1,568,048 bytes | Build verified; this version not hardware validated |
-| `esp32c3` | ESP32-C3 | 1,778,816 bytes | Build verified; this version not hardware validated |
-| `esp32c5` | ESP32-C5 | 1,914,656 bytes | Build verified; this version not hardware validated |
-| `esp32c6` | ESP32-C6 | 1,924,160 bytes | Build verified; this version not hardware validated |
-| `esp32c61` | ESP32-C61 | 1,845,328 bytes | Build verified; this version not hardware validated |
-| `esp32s3` | ESP32-S3 | 1,553,648 bytes | Build verified; this version not hardware validated |
+| `esp32` | ESP32-WROOM-32 / WROOM-D32 | 1,545,152 bytes | Build verified; this version not hardware validated |
+| `esp32c2` | ESP32-C2 | 1,572,800 bytes | Build verified; this version not hardware validated |
+| `esp32c3` | ESP32-C3 | 1,783,552 bytes | Build verified; this version not hardware validated |
+| `esp32c5` | ESP32-C5 | 1,919,392 bytes | Build verified; this version not hardware validated |
+| `esp32c6` | ESP32-C6 | 1,928,960 bytes | Build verified; this version not hardware validated |
+| `esp32c61` | ESP32-C61 | 1,850,064 bytes | Build verified; this version not hardware validated |
+| `esp32s3` | ESP32-S3 | 1,557,936 bytes | Build verified; this version not hardware validated |
 
 The table describes the published v0.4.0 images. Build verification, physical flashing, BLE enrollment, and live iPhone notification capture are separate validation scopes; boards without physical-device evidence are labeled as build verified only.
 
