@@ -77,13 +77,13 @@ iPhone → BLE ANCS → ESP32 → Wi-Fi/MQTT → Home Assistant
 
 | Target | 常见模块/板型 | Factory 镜像 | v0.4.3 状态 |
 | --- | --- | ---: | --- |
-| `esp32` | ESP32-WROOM-32 / WROOM-D32 | 1,545,152 bytes | Build verified; this version not hardware validated |
-| `esp32c2` | ESP32-C2 | 1,572,800 bytes | Build verified; this version not hardware validated |
-| `esp32c3` | ESP32-C3 | 1,783,552 bytes | Build verified; this version not hardware validated |
-| `esp32c5` | ESP32-C5 | 1,919,392 bytes | Build verified; this version not hardware validated |
-| `esp32c6` | ESP32-C6 | 1,928,960 bytes | Build verified; this version not hardware validated |
-| `esp32c61` | ESP32-C61 | 1,850,064 bytes | Build verified; this version not hardware validated |
-| `esp32s3` | ESP32-S3 | 1,557,936 bytes | Build verified; this version not hardware validated |
+| `esp32` | ESP32-WROOM-32 / WROOM-D32 | 1,545,616 bytes | Build verified; this version not hardware validated |
+| `esp32c2` | ESP32-C2 | 1,573,200 bytes | Build verified; this version not hardware validated |
+| `esp32c3` | ESP32-C3 | 1,783,952 bytes | Build verified; this version not hardware validated |
+| `esp32c5` | ESP32-C5 | 1,919,792 bytes | Build verified; this version not hardware validated |
+| `esp32c6` | ESP32-C6 | 1,929,360 bytes | Build verified; this version not hardware validated |
+| `esp32c61` | ESP32-C61 | 1,850,464 bytes | Build verified; this version not hardware validated |
+| `esp32s3` | ESP32-S3 | 1,558,384 bytes | Build verified; this version not hardware validated |
 
 表中状态基于本地 v0.4.3 构建（CI 矩阵同配置）。构建验证、实机刷写、BLE 注册、iPhone 通知接收是不同层级的验证；没有实机结果的板型只标注构建已验证。
 
