@@ -65,7 +65,12 @@ def test_security_request_uses_current_bluedroid_bond_list():
     assert "esp_ble_get_bond_device_num()" in source
     assert "esp_ble_get_bond_device_list(&list_count, bond_list)" in source
     assert "memcmp(bond_list[index].bd_addr, peer_addr, ESP_BD_ADDR_LEN) == 0" in source
-    assert "bond_list_contains_peer(parameter->ble_security.ble_req.bd_addr)" in source
+    # The security request must NOT gate on a raw-address bond lookup: the
+    # bonded iPhone reconnects with a rotated RPA that never matches the
+    # stored address. Admission is gated on the repair lockout only; MITM
+    # pairing (static PIN) proves identity.
+    assert "bond_list_contains_peer(parameter->ble_security.ble_req.bd_addr)" not in source
+    assert "const bool allowed = !locked;" in source
     assert "esp_ble_gap_security_rsp(\n            parameter->ble_security.ble_req.bd_addr, allowed)" in source
     assert "esp_ble_gap_disconnect(parameter->ble_security.ble_req.bd_addr)" in source
 

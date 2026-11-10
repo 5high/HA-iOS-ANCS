@@ -45,6 +45,12 @@
 #define DISCOVERY_BACKOFF_MAX_MS 5000U
 #define AUTH_FAILURE_REPAIR_THRESHOLD 3U
 #define AUTH_FAILURE_WINDOW_MS 120000LL
+/* The repair lockout used to be permanent (only an explicit enrollment
+ * request cleared it). A phone that erased its side of the bond could then
+ * never come back on its own. Auto-release the lockout after this long with
+ * a single re-entry attempt: if the failures resume inside the window the
+ * guard trips again, so a genuinely hostile peer stays locked out. */
+#define AUTH_REPAIR_LOCKOUT_MS 600000LL
 
 static const char *const TAG = "ANCS_CLIENT";
 
@@ -1223,12 +1229,27 @@ static void check_advertising_liveness(void)
      * wandered out of BLE range and came back. Re-arm every worker tick when
      * we should be advertising but are not. */
     taskENTER_CRITICAL(&s_shared_state_lock);
+    bool lockout_expired = false;
+    if (s_client.pairing_repair_required && !s_client.connected &&
+        s_client.last_auth_failure_ms != 0 &&
+        now_ms() - s_client.last_auth_failure_ms >= AUTH_REPAIR_LOCKOUT_MS) {
+        /* Time-based auto-release: re-open the pairing path once after a long
+         * quiet period. Clearing the failure counter means three fresh auth
+         * failures inside AUTH_FAILURE_WINDOW_MS are needed to lock us out
+         * again, so a hostile peer cannot keep cycling the guard. */
+        clear_auth_failure_guard_locked();
+        lockout_expired = true;
+    }
     const bool stalled = !s_client.connected && !s_client.closing &&
                          !s_client.advertising &&
                          !s_client.advertising_starting &&
                          s_client.adv_config_pending == 0U &&
                          ble_enroll_should_advertise(&s_enroll, now_ms());
     taskEXIT_CRITICAL(&s_shared_state_lock);
+    if (lockout_expired) {
+        ESP_LOGI(TAG, "pairing repair lockout expired; advertising re-armed");
+        publish_state();
+    }
     if (stalled) {
         start_advertising();
     }
@@ -1791,17 +1812,20 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event,
 
     case ESP_GAP_BLE_SEC_REQ_EVT:
     {
-        const int64_t now = now_ms();
+        /* The bonded iPhone's LE Secure Connections request arrives with a
+         * rotated RPA that never matches the address captured at pairing
+         * time, so answering it from a raw-address bond lookup rejected our
+         * own owner. Accept the request whenever we are not in the permanent
+         * repair lockout: identity is proven by the MITM-protected pairing
+         * itself (static PIN), and a stranger fails there without bonding. */
         taskENTER_CRITICAL(&s_shared_state_lock);
-        const bool active_enroll = ble_enroll_window_active(&s_enroll, now);
+        const bool locked = s_client.pairing_repair_required;
         taskEXIT_CRITICAL(&s_shared_state_lock);
-        const bool allowed =
-            active_enroll ||
-            bond_list_contains_peer(parameter->ble_security.ble_req.bd_addr);
+        const bool allowed = !locked;
         (void)esp_ble_gap_security_rsp(
             parameter->ble_security.ble_req.bd_addr, allowed);
         if (!allowed) {
-            ESP_LOGW(TAG, "rejected security request from unknown peer");
+            ESP_LOGW(TAG, "rejected security request during pairing repair lockout");
             (void)esp_ble_gap_disconnect(parameter->ble_security.ble_req.bd_addr);
         }
         break;
