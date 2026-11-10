@@ -259,6 +259,7 @@ static void start_discovery(void);
 static int sync_existing_ble_bond(void);
 static esp_err_t open_replacement_window(void);
 static void enroll_timeout_callback(void *argument);
+static void check_advertising_liveness(void);
 static void check_connection_deadline(void);
 
 static int64_t now_ms(void)
@@ -332,17 +333,49 @@ static bool bond_list_contains_peer(const uint8_t peer_addr[ESP_BD_ADDR_LEN])
     return matched;
 }
 
+/* Remove the single stored bond when a reconnecting peer arrives with a
+ * different (rotated RPA) address. The bond store holds exactly one owner;
+ * its saved address is stale by definition once the phone rotates, and any
+ * new pairing will re-bond the current address on success. */
+static void forget_stale_owner_bond(void)
+{
+    const int bond_count = current_bond_count();
+    if (bond_count <= 0) {
+        return;
+    }
+    esp_ble_bond_dev_t *bond_list =
+        calloc((size_t)bond_count, sizeof(*bond_list));
+    if (bond_list == NULL) {
+        return;
+    }
+    int list_count = bond_count;
+    if (esp_ble_get_bond_device_list(&list_count, bond_list) == ESP_OK) {
+        for (int index = 0; index < list_count; ++index) {
+            (void)esp_ble_remove_bond_device(bond_list[index].bd_addr);
+        }
+    }
+    free(bond_list);
+    taskENTER_CRITICAL(&s_shared_state_lock);
+    ble_enroll_clear_bond(&s_enroll);
+    s_client.bonded = false;
+    taskEXIT_CRITICAL(&s_shared_state_lock);
+    ESP_LOGI(TAG, "cleared stale bond entries for rotated peer address");
+}
+
 static bool connection_peer_allowed(
     const uint8_t peer_addr[ESP_BD_ADDR_LEN])
 {
-    const int count = current_bond_count();
-    if (count < 0) {
-        return false;
-    }
-    if (count > 0) {
-        return bond_list_contains_peer(peer_addr);
-    }
-    return enroll_window_active_now();
+    /* A bonded iPhone reconnects with a *rotated* RPA that never matches the
+     * address stored at pairing time, so a raw-address bond lookup would
+     * reject our own owner ("rejected connection from unauthorized peer").
+     * Identity is proven later by the MITM-protected pairing itself (static
+     * PIN): any stranger fails there and never gets a bond. Only gate on the
+     * permanent repair lockout, which still requires an explicit enrollment
+     * request to clear. */
+    taskENTER_CRITICAL(&s_shared_state_lock);
+    const bool locked = s_client.pairing_repair_required;
+    taskEXIT_CRITICAL(&s_shared_state_lock);
+    return !locked;
 }
 
 static bool connection_event_matches(
@@ -1107,6 +1140,7 @@ static void worker_task(void *argument)
     for (;;) {
         check_connection_deadline();
         enroll_timeout_callback(NULL); /* Also covers lost/old timer wakeups. */
+        check_advertising_liveness();
         const uint32_t generation = current_generation();
         if (s_worker.generation != generation) {
             reset_worker_session(generation);
@@ -1176,6 +1210,27 @@ static void enroll_timeout_callback(void *argument)
     if (expired && !has_bond) {
         stop_advertising();
         ESP_LOGI(TAG, "enrollment window expired");
+    }
+}
+
+static void check_advertising_liveness(void)
+{
+    /* Safety net: advertising is only re-armed from GAP callbacks and a few
+     * explicit call sites. If any path ever leaves us disconnected with the
+     * controller having stopped (or never started) advertising — e.g. an adv
+     * start-complete failure whose retry timer was lost, or a stop that raced
+     * a connect attempt — the bonded phone could never see us again after it
+     * wandered out of BLE range and came back. Re-arm every worker tick when
+     * we should be advertising but are not. */
+    taskENTER_CRITICAL(&s_shared_state_lock);
+    const bool stalled = !s_client.connected && !s_client.closing &&
+                         !s_client.advertising &&
+                         !s_client.advertising_starting &&
+                         s_client.adv_config_pending == 0U &&
+                         ble_enroll_should_advertise(&s_enroll, now_ms());
+    taskEXIT_CRITICAL(&s_shared_state_lock);
+    if (stalled) {
+        start_advertising();
     }
 }
 
@@ -1966,6 +2021,18 @@ static void handle_gattc_event(esp_gattc_cb_event_t event,
                sizeof(esp_bd_addr_t));
         taskEXIT_CRITICAL(&s_shared_state_lock);
         transition(ANCS_SIGNAL_ENCRYPTION_STARTED);
+        /* A bonded iPhone reconnects with a rotated RPA that never matches
+         * the address in our bond store. Forcing re-encryption against that
+         * mismatched SM record produced "earlier enc was not done for same
+         * device" and a 3~25x connect/kick storm (reason=0x3d) every time
+         * the phone left and came back. Start a fresh pairing instead: with
+         * a bond present Bluedroid re-runs SC+MITM key exchange, the peer
+         * IRK/identity resolves the rotated address, and on success the new
+         * link is encrypted AND the bond refreshed to the current address
+         * (see AUTH_CMPL handler). */
+        if (!bond_list_contains_peer(parameter->open.remote_bda)) {
+            forget_stale_owner_bond();
+        }
         if (esp_ble_set_encryption(
                 parameter->open.remote_bda, ESP_BLE_SEC_ENCRYPT_MITM) !=
             ESP_OK) {
@@ -2031,7 +2098,22 @@ static void handle_gattc_event(esp_gattc_cb_event_t event,
         s_client.discovery_in_progress = false;
         const bool service_found = s_client.service_found;
         taskEXIT_CRITICAL(&s_shared_state_lock);
-        if (parameter->search_cmpl.status != ESP_GATT_OK ||
+        /* When the link drops mid-discovery, Bluedroid completes the search
+         * with a disconnect status (0x13/0x16/0x3d/0x08) rather than a real
+         * "service not found". Treating those as a failed discovery schedules
+         * a doomed retry that races the imminent DISCONNECT_EVT handler and
+         * feeds the reconnect storm; let the disconnect path own recovery. */
+        const uint8_t search_status = parameter->search_cmpl.status;
+        /* 0x3d = HCI ERR_CONNECTION_FAILED_TO_ESTABLISH (LSTO); the GATT
+         * enum spells 0x3e as CONN_FAIL_ESTABLISH, so compare raw here. */
+        if (search_status == ESP_GATT_CONN_TERMINATE_PEER_USER ||
+            search_status == ESP_GATT_CONN_TERMINATE_LOCAL_HOST ||
+            search_status == 0x3d ||
+            search_status == ESP_GATT_CONN_FAIL_ESTABLISH ||
+            search_status == 0x08) {
+            break;
+        }
+        if (search_status != ESP_GATT_OK ||
             !service_found) {
             ESP_LOGW(TAG,
                      "ANCS service not available status=0x%x",
