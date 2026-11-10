@@ -259,6 +259,7 @@ static void start_discovery(void);
 static int sync_existing_ble_bond(void);
 static esp_err_t open_replacement_window(void);
 static void enroll_timeout_callback(void *argument);
+static void check_advertising_liveness(void);
 static void check_connection_deadline(void);
 
 static int64_t now_ms(void)
@@ -1107,6 +1108,7 @@ static void worker_task(void *argument)
     for (;;) {
         check_connection_deadline();
         enroll_timeout_callback(NULL); /* Also covers lost/old timer wakeups. */
+        check_advertising_liveness();
         const uint32_t generation = current_generation();
         if (s_worker.generation != generation) {
             reset_worker_session(generation);
@@ -1176,6 +1178,27 @@ static void enroll_timeout_callback(void *argument)
     if (expired && !has_bond) {
         stop_advertising();
         ESP_LOGI(TAG, "enrollment window expired");
+    }
+}
+
+static void check_advertising_liveness(void)
+{
+    /* Safety net: advertising is only re-armed from GAP callbacks and a few
+     * explicit call sites. If any path ever leaves us disconnected with the
+     * controller having stopped (or never started) advertising — e.g. an adv
+     * start-complete failure whose retry timer was lost, or a stop that raced
+     * a connect attempt — the bonded phone could never see us again after it
+     * wandered out of BLE range and came back. Re-arm every worker tick when
+     * we should be advertising but are not. */
+    taskENTER_CRITICAL(&s_shared_state_lock);
+    const bool stalled = !s_client.connected && !s_client.closing &&
+                         !s_client.advertising &&
+                         !s_client.advertising_starting &&
+                         s_client.adv_config_pending == 0U &&
+                         ble_enroll_should_advertise(&s_enroll, now_ms());
+    taskEXIT_CRITICAL(&s_shared_state_lock);
+    if (stalled) {
+        start_advertising();
     }
 }
 
