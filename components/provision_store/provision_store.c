@@ -16,6 +16,7 @@
 #define PROVISION_ACTIVE_KEY "active"
 #define PROVISION_MQTT_VERIFIED_KEY "mqtt_ok"
 #define PROVISION_LED_ENABLED_KEY "led_on"
+#define PROVISION_OWNER_BOND_KEY "ios_bonded"
 #define PROVISION_ACTIVE_A 0U
 #define PROVISION_ACTIVE_B 1U
 
@@ -36,6 +37,8 @@ static uint32_t s_test_mqtt_verified;
 static bool s_test_mqtt_verified_valid;
 static bool s_test_led_enabled;
 static bool s_test_led_enabled_valid;
+static bool s_test_owner_bonded;
+static bool s_test_owner_bonded_valid;
 #endif
 
 typedef struct {
@@ -750,6 +753,8 @@ esp_err_t provision_store_reset(void)
         s_test_mqtt_verified_valid = false;
         s_test_led_enabled = false;
         s_test_led_enabled_valid = false;
+        s_test_owner_bonded = false;
+        s_test_owner_bonded_valid = false;
         return ESP_OK;
     }
 #endif
@@ -866,6 +871,59 @@ esp_err_t provision_store_save_led_enabled(bool enabled)
     nvs_close(handle);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "LED preference save failed: %s", esp_err_to_name(err));
+    }
+    return err;
+}
+
+esp_err_t provision_store_load_owner_bonded(bool *bonded)
+{
+    if (bonded == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+#if CONFIG_PROVISION_STORE_TEST_BACKEND
+    if (s_test_backend) {
+        if (!s_test_owner_bonded_valid) {
+            return ESP_ERR_NVS_NOT_FOUND;
+        }
+        *bonded = s_test_owner_bonded;
+        return ESP_OK;
+    }
+#endif
+    nvs_handle_t handle = 0;
+    esp_err_t err = open_namespace(NVS_READONLY, &handle);
+    if (err != ESP_OK) {
+        return err;
+    }
+    uint8_t stored = 0;
+    err = nvs_get_u8(handle, PROVISION_OWNER_BOND_KEY, &stored);
+    nvs_close(handle);
+    if (err == ESP_OK) {
+        *bonded = stored != 0U;
+    }
+    return err;
+}
+
+esp_err_t provision_store_save_owner_bonded(bool bonded)
+{
+#if CONFIG_PROVISION_STORE_TEST_BACKEND
+    if (s_test_backend) {
+        s_test_owner_bonded = bonded;
+        s_test_owner_bonded_valid = true;
+        return ESP_OK;
+    }
+#endif
+    nvs_handle_t handle = 0;
+    esp_err_t err = open_namespace(NVS_READWRITE, &handle);
+    if (err != ESP_OK) {
+        return err;
+    }
+    err = nvs_set_u8(handle, PROVISION_OWNER_BOND_KEY, bonded ? 1U : 0U);
+    if (err == ESP_OK) {
+        err = nvs_commit(handle);
+    }
+    nvs_close(handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "owner bond flag save failed: %s", esp_err_to_name(err));
     }
     return err;
 }

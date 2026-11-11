@@ -107,6 +107,15 @@ esp_err_t provision_store_save_mqtt_verified(uint32_t fingerprint);
 esp_err_t provision_store_load_led_enabled(bool *enabled);
 esp_err_t provision_store_save_led_enabled(bool enabled);
 
+/* Persistent "this device has an owner bond" flag. The Bluedroid bond store
+ * is keyed by the raw peer address, and an iPhone reconnects with a rotated
+ * RPA that never matches the stored entry — so the in-RAM bond state must not
+ * be derived from a raw-address lookup alone, or every reboot/power cycle
+ * looks like "no owner" and forces manual re-pairing. This flag survives
+ * resets; factory reset (provision_store_reset) clears it along with config. */
+esp_err_t provision_store_load_owner_bonded(bool *bonded);
+esp_err_t provision_store_save_owner_bonded(bool bonded);
+
 esp_err_t provision_store_encode_for_test(
     const provision_config_t *config,
     uint32_t generation,

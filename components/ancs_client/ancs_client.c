@@ -22,6 +22,7 @@
 #include "esp_mac.h"
 #include "esp_timer.h"
 #include "provisioning_runtime.h"
+#include "provision_store.h"
 #include <time.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
@@ -317,7 +318,14 @@ static bool bond_list_contains_peer(const uint8_t peer_addr[ESP_BD_ADDR_LEN])
     }
     const int bond_count = current_bond_count();
     if (bond_count <= 0) {
-        return false;
+        /* No raw-address entry may exist, but ownership is a persistent
+         * fact (see load_existing_ble_bond): treat any peer as "already
+         * known" so the reconnect path never evicts the owner flag or the
+         * fresh bond mid-session. A genuine stranger still fails MITM
+         * pairing and never bonds. */
+        bool persisted_owner = false;
+        return provision_store_load_owner_bonded(&persisted_owner) == ESP_OK &&
+               persisted_owner;
     }
     esp_ble_bond_dev_t *bond_list =
         calloc((size_t)bond_count, sizeof(*bond_list));
@@ -1847,6 +1855,11 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event,
             ble_enroll_note_bonded(
                 &s_enroll, parameter->ble_security.auth_cmpl.bd_addr);
             taskEXIT_CRITICAL(&s_shared_state_lock);
+            /* Persist ownership: the Bluedroid bond entry is keyed by this
+             * (soon-to-be-rotated) RPA and will not resolve on the next
+             * reconnect or reboot. Without this flag every power cycle read
+             * as "no owner" and demanded a manual re-pairing. */
+            (void)provision_store_save_owner_bonded(true);
             (void)esp_timer_stop(s_client.enroll_timer);
             stop_advertising();
             transition(ANCS_SIGNAL_BONDED);
@@ -2480,6 +2493,24 @@ static int sync_existing_ble_bond(void)
 static void load_existing_ble_bond(void)
 {
     const int count = sync_existing_ble_bond();
+    /* The raw-address bond list is empty whenever the iPhone reconnects with
+     * a rotated RPA (and after any reboot/power cycle, since the entry was
+     * stored under an address that will never appear again). Ownership is a
+     * persistent fact, not an address match: if we ever completed MITM
+     * pairing, keep advertising as "has owner" so the phone's automatic
+     * reconnect is admitted and re-pairs transparently — no manual pairing
+     * after power loss. Only an explicit factory reset clears the flag. */
+    bool persisted_owner = false;
+    if (provision_store_load_owner_bonded(&persisted_owner) == ESP_OK &&
+        persisted_owner) {
+        taskENTER_CRITICAL(&s_shared_state_lock);
+        const uint8_t owner_addr[ESP_BD_ADDR_LEN] = {0};
+        ble_enroll_note_bonded(&s_enroll, owner_addr);
+        s_client.bonded = true;
+        taskEXIT_CRITICAL(&s_shared_state_lock);
+        ESP_LOGI(TAG, "persisted owner bond restored (raw list count=%d)",
+                 count);
+    }
     taskENTER_CRITICAL(&s_shared_state_lock);
     if (!s_client.initialized) {
         s_client.boot_bond_count = count;
@@ -2962,6 +2993,11 @@ esp_err_t ancs_client_replace_enrollment(bool confirmed)
         return error;
     }
     if (esp_ble_get_bond_device_num() == 0) {
+        /* Explicit enrollment replacement: the owner is gone by user
+         * request, so the persisted ownership flag must go too — otherwise
+         * a later reboot would resurrect "has owner" and refuse factory
+         * pairing semantics. */
+        (void)provision_store_save_owner_bonded(false);
         taskENTER_CRITICAL(&s_shared_state_lock);
         s_client.replace_pending = false;
         taskEXIT_CRITICAL(&s_shared_state_lock);
