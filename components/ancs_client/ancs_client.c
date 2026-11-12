@@ -2528,8 +2528,21 @@ static int sync_existing_ble_bond(void)
         ble_enroll_note_bonded(&s_enroll, bond_list[0].bd_addr);
         s_client.bonded = true; /* Preserve legacy output; auth is separate. */
     } else if (error == ESP_OK && list_count == 0) {
-        ble_enroll_clear_bond(&s_enroll);
-        s_client.bonded = false;
+        /* Empty raw store: ownership is a persistent fact, not an address
+         * match. Re-assert the owner flag instead of clearing it — every
+         * periodic bond poll used to wipe has_bond here whenever the raw
+         * entry was absent (rotated RPA / power cycle), which silenced
+         * advertising and made the device invisible to the owner. */
+        bool persisted_owner = false;
+        if (provision_store_load_owner_bonded(&persisted_owner) == ESP_OK &&
+            persisted_owner) {
+            const uint8_t owner_addr[ESP_BD_ADDR_LEN] = {0};
+            ble_enroll_note_bonded(&s_enroll, owner_addr);
+            s_client.bonded = true; /* Preserve legacy output; auth is separate. */
+        } else {
+            ble_enroll_clear_bond(&s_enroll);
+            s_client.bonded = false;
+        }
     }
     taskEXIT_CRITICAL(&s_shared_state_lock);
     free(bond_list);
