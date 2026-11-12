@@ -2461,12 +2461,16 @@ static void handle_gattc_event(esp_gattc_cb_event_t event,
         s_client.last_disconnect_reason = parameter->disconnect.reason;
         taskEXIT_CRITICAL(&s_shared_state_lock);
         reset_connection_session();
-        if (owner_persisted_bonded() && current_bond_count() > 0) {
-            /* Raw entry exists but the session that validated it is over;
-             * drop it so the next reconnect starts a fresh MITM pairing
-             * instead of failing encryption against a dead address. */
-            forget_stale_owner_bond();
-        }
+        /* v0.4.9: KEEP the bond across disconnects. The previous design
+         * dropped the raw bond entry after every session so each reconnect
+         * started a fresh MITM pairing, but Bluedroid's SMP rejects that on
+         * iOS side (the phone still holds the old LTK and refuses to
+         * re-pair) — authentication failed reason=0x66 on every second
+         * connect, which is why a reboot demanded a manual re-pair. With
+         * the bond kept, a reconnecting owner at its rotated RPA simply
+         * fails the raw-address lookup, gets a fresh SC+MITM pairing (see
+         * OPEN_EVT), and AUTH_CMPL success refreshes the bond to the new
+         * address. Ownership stays in the NVS flag regardless. */
         transition(ANCS_SIGNAL_DISCONNECTED);
         taskENTER_CRITICAL(&s_shared_state_lock);
         const bool reopen = s_client.reopen_after_disconnect;
