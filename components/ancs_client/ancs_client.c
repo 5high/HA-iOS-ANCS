@@ -305,6 +305,13 @@ static bool enroll_should_advertise_now(void)
     return allowed;
 }
 
+static bool owner_persisted_bonded(void)
+{
+    bool persisted_owner = false;
+    return provision_store_load_owner_bonded(&persisted_owner) == ESP_OK &&
+           persisted_owner;
+}
+
 static int current_bond_count(void)
 {
     /* -1 means unknown/error, never an empty persistent store. */
@@ -369,10 +376,12 @@ static void forget_stale_owner_bond(void)
         }
     }
     free(bond_list);
-    taskENTER_CRITICAL(&s_shared_state_lock);
-    ble_enroll_clear_bond(&s_enroll);
-    s_client.bonded = false;
-    taskEXIT_CRITICAL(&s_shared_state_lock);
+    /* Do NOT clear the enroll has_bond/bonded flags here: the removal is
+     * asynchronous and its completion handler (sync_existing_ble_bond)
+     * would otherwise see an empty raw list while a live session is still
+     * running, silently dropping ownership mid-connection. Ownership lives
+     * in the NVS flag; the raw entry is just a cache to be refreshed by
+     * the next successful pairing. */
     ESP_LOGI(TAG, "cleared stale bond entries for rotated peer address");
 }
 
@@ -520,6 +529,17 @@ static void clear_auth_failure_guard_locked(void)
     s_client.pairing_repair_required = false;
 }
 
+static bool owner_persisted_locked(void)
+{
+    /* Caller holds the shared-state lock. Ownership is a persistent fact,
+     * not an address match: once MITM pairing has ever completed, the next
+     * peer that fails authentication is still (re-)connecting as our owner
+     * with a rotated RPA, not a hostile scanner. */
+    bool persisted_owner = false;
+    return provision_store_load_owner_bonded(&persisted_owner) == ESP_OK &&
+           persisted_owner;
+}
+
 static bool record_auth_failure_locked(int64_t failure_at_ms,
                                        bool missing_local_bond)
 {
@@ -533,7 +553,12 @@ static bool record_auth_failure_locked(int64_t failure_at_ms,
     if (s_client.auth_failure_count < UINT8_MAX) {
         ++s_client.auth_failure_count;
     }
-    if (missing_local_bond &&
+    /* A persisted owner is never locked out: the iPhone reconnects with a
+     * rotated RPA that our raw-address bond store cannot match, so auth
+     * failures from it are expected re-pairing churn, not an attack. The
+     * repair lockout only guards against unknown peers hammering us while
+     * we have no owner at all. */
+    if (missing_local_bond && !owner_persisted_locked() &&
         s_client.auth_failure_count >= AUTH_FAILURE_REPAIR_THRESHOLD) {
         s_client.pairing_repair_required = true;
         ble_enroll_close_window(&s_enroll);
@@ -1697,9 +1722,23 @@ static void discover_characteristics(void)
 
 static void reset_connection_session(void)
 {
+    /* Ownership survives a disconnect: if we ever completed MITM pairing,
+     * keep the enroll state's has_bond set so advertising stays alive and
+     * the owner's automatic reconnect is admitted after the link drops.
+     * (ble_enroll_clear_bond may have run mid-session when a rotated RPA
+     * failed to match the raw-address bond list; re-assert from the NVS
+     * flag here.) */
+    bool persisted_owner = false;
+    const bool owner =
+        provision_store_load_owner_bonded(&persisted_owner) == ESP_OK &&
+        persisted_owner;
     taskENTER_CRITICAL(&s_shared_state_lock);
     s_client.connected = false;
     s_client.bonded = false;
+    if (owner && !ble_enroll_has_bond(&s_enroll)) {
+        const uint8_t owner_addr[ESP_BD_ADDR_LEN] = {0};
+        ble_enroll_note_bonded(&s_enroll, owner_addr);
+    }
     s_client.session_authenticated = false;
     s_client.link_encrypted = false;
     s_client.closing = false;
@@ -1929,9 +1968,15 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event,
         taskENTER_CRITICAL(&s_shared_state_lock);
         if (remaining == 0) {
             should_open = s_client.replace_pending;
-            s_client.replace_pending = false;
             s_client.last_replace_error = ESP_OK;
         }
+        /* A mid-session stale-bond wipe is not an explicit replacement:
+         * with a persisted owner, keep advertising as owned and let the
+         * phone re-pair transparently instead of demanding manual pairing. */
+        if (should_open && owner_persisted_locked()) {
+            should_open = false;
+        }
+        s_client.replace_pending = false;
         taskEXIT_CRITICAL(&s_shared_state_lock);
         if (should_open) {
             const esp_err_t enroll_error = open_replacement_window();
@@ -2416,6 +2461,12 @@ static void handle_gattc_event(esp_gattc_cb_event_t event,
         s_client.last_disconnect_reason = parameter->disconnect.reason;
         taskEXIT_CRITICAL(&s_shared_state_lock);
         reset_connection_session();
+        if (owner_persisted_bonded() && current_bond_count() > 0) {
+            /* Raw entry exists but the session that validated it is over;
+             * drop it so the next reconnect starts a fresh MITM pairing
+             * instead of failing encryption against a dead address. */
+            forget_stale_owner_bond();
+        }
         transition(ANCS_SIGNAL_DISCONNECTED);
         taskENTER_CRITICAL(&s_shared_state_lock);
         const bool reopen = s_client.reopen_after_disconnect;
@@ -2896,6 +2947,17 @@ esp_err_t ancs_client_request_enroll(void)
     if (count < 0) {
         return ESP_FAIL;
     }
+    if (count == 0 && owner_persisted_bonded()) {
+        /* Ownership survives address rotation and power cycles: keep the
+         * advertising-as-owned state and refuse to open a manual pairing
+         * window — only an explicit replacement clears the flag. */
+        taskENTER_CRITICAL(&s_shared_state_lock);
+        const uint8_t owner_addr[ESP_BD_ADDR_LEN] = {0};
+        ble_enroll_note_bonded(&s_enroll, owner_addr);
+        taskEXIT_CRITICAL(&s_shared_state_lock);
+        start_advertising();
+        return ESP_OK;
+    }
     if (count > 0) {
         /* Existing peers may reconnect; do not silently replace their bond. */
         (void)esp_timer_stop(enroll_timer);
@@ -3023,10 +3085,14 @@ ancs_client_enrollment_status_t ancs_client_get_enrollment_status(void)
     taskEXIT_CRITICAL(&s_shared_state_lock);
     const int bond_count = initialized ? current_bond_count() : -1;
     taskENTER_CRITICAL(&s_shared_state_lock);
+    const bool status_has_bond =
+        ble_enroll_has_bond(&s_enroll) || owner_persisted_bonded();
+    taskEXIT_CRITICAL(&s_shared_state_lock);
+    taskENTER_CRITICAL(&s_shared_state_lock);
     const ancs_client_enrollment_status_t status = {
         .enroll_active = ble_enroll_window_active(&s_enroll, now),
         .replace_pending = s_client.replace_pending,
-        .has_bond = bond_count > 0 || ble_enroll_has_bond(&s_enroll),
+        .has_bond = bond_count > 0 || status_has_bond,
         .connected = s_client.connected,
         .pairing_repair_required = s_client.pairing_repair_required,
         .auth_failure_count = s_client.auth_failure_count,

@@ -91,6 +91,9 @@ def test_actual_ble_guard_and_enrollment_expiry_execute_with_virtual_time(tmp_pa
         pytest.skip("host C compiler unavailable")
     client = (ROOT / "components/ancs_client/ancs_client.c").read_text()
     functions = c_function(client, "static void clear_auth_failure_guard_locked(void)")
+    # The guard consults the persisted-owner flag; stub it as "no owner" so
+    # this test exercises the raw failure-count/lockout semantics.
+    functions += ("\nstatic bool owner_persisted_locked(void) { return false; }\n")
     functions += "\n" + c_function(client, "static bool record_auth_failure_locked(int64_t failure_at_ms,\n                                       bool missing_local_bond)")
     constants = "\n".join(re.findall(r"^#define AUTH_FAILURE_(?:WINDOW_MS|REPAIR_THRESHOLD).*$", client, re.M))
     (tmp_path / "esp_err.h").write_text("typedef int esp_err_t;\n#define ESP_OK 0\n#define ESP_ERR_INVALID_ARG 258\n#define ESP_ERR_INVALID_STATE 259\n")
