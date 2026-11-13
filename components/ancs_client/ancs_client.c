@@ -43,6 +43,16 @@
 #define SCAN_RESPONSE_PENDING (1U << 1)
 #define CONTROL_REQUEST_MAX (CONFIG_ANCS_APP_ID_MAX + 3U)
 #define ADVERTISING_BACKOFF_MAX_MS 30000U
+/* Upstream-port (1bobby-git 881b633): periodic advertising refresh. The
+ * controller silently stops legacy advertising on every incoming
+ * connection — including one we reject — so the cached "advertising"
+ * flag can go stale while the air is quiet. Re-arm on a timer to heal. */
+#define ADVERTISING_REFRESH_MS INT64_C(60000)
+/* Post-authentication connection parameters per Apple Accessory Design
+ * Guidelines: 30-45 ms interval, no latency, 6 s supervision timeout. */
+#define CONNECTION_INTERVAL_MIN_UNITS 0x0018U
+#define CONNECTION_INTERVAL_MAX_UNITS 0x0024U
+#define CONNECTION_SUPERVISION_TIMEOUT_UNITS 600U
 #define DISCOVERY_BACKOFF_MAX_MS 5000U
 #define AUTH_FAILURE_REPAIR_THRESHOLD 3U
 #define AUTH_FAILURE_WINDOW_MS 120000LL
@@ -175,6 +185,7 @@ typedef struct {
     uint8_t advertising_attempt;
     uint8_t discovery_attempt;
     uint8_t adv_config_pending;
+    int64_t advertising_refresh_due_ms;
 
     QueueHandle_t work_queue;
     TaskHandle_t worker_task;
@@ -1278,12 +1289,30 @@ static void check_advertising_liveness(void)
                          !s_client.advertising_starting &&
                          s_client.adv_config_pending == 0U &&
                          ble_enroll_should_advertise(&s_enroll, now_ms());
+    /* Refresh path (upstream-port): advertising looks healthy but the
+     * controller may have silently dropped it when a peer connected and
+     * was rejected. Periodically stop+restart so the air actually carries
+     * advertisements again. */
+    const bool refresh_due = !s_client.connected && !s_client.closing &&
+                             s_client.advertising &&
+                             s_client.adv_config_pending == 0U &&
+                             ble_enroll_should_advertise(&s_enroll, now_ms()) &&
+                             s_client.advertising_refresh_due_ms != 0 &&
+                             now_ms() >= s_client.advertising_refresh_due_ms;
+    if (refresh_due) {
+        s_client.advertising_refresh_due_ms = 0;
+    }
     taskEXIT_CRITICAL(&s_shared_state_lock);
     if (lockout_expired) {
         ESP_LOGI(TAG, "pairing repair lockout expired; advertising re-armed");
         publish_state();
     }
     if (stalled) {
+        start_advertising();
+    }
+    if (refresh_due) {
+        ESP_LOGI(TAG, "advertising refresh window elapsed; re-arming");
+        stop_advertising();
         start_advertising();
     }
 }
@@ -1436,6 +1465,9 @@ static void start_advertising(void)
         return;
     }
     s_client.advertising_starting = true;
+    /* Arm the periodic refresh so a controller-side silent stop (any
+     * incoming connection, even a rejected one) heals within one window. */
+    s_client.advertising_refresh_due_ms = now_ms() + ADVERTISING_REFRESH_MS;
     taskEXIT_CRITICAL(&s_shared_state_lock);
     const esp_err_t error = esp_ble_gap_start_advertising(&s_adv_params);
     if (error != ESP_OK) {
@@ -1901,6 +1933,22 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event,
             (void)provision_store_save_owner_bonded(true);
             (void)esp_timer_stop(s_client.enroll_timer);
             stop_advertising();
+            /* Upstream-port: ask the owner for Apple-recommended connection
+             * parameters (30-45 ms interval, 6 s supervision timeout) so
+             * ANCS notifications stay low-latency and the link tolerates
+             * interference before iOS declares it lost. */
+            esp_ble_conn_update_params_t connection_params = {
+                .min_int = CONNECTION_INTERVAL_MIN_UNITS,
+                .max_int = CONNECTION_INTERVAL_MAX_UNITS,
+                .latency = 0,
+                .timeout = CONNECTION_SUPERVISION_TIMEOUT_UNITS,
+            };
+            memcpy(connection_params.bda,
+                   parameter->ble_security.auth_cmpl.bd_addr,
+                   sizeof(esp_bd_addr_t));
+            if (esp_ble_gap_update_conn_params(&connection_params) != ESP_OK) {
+                ESP_LOGW(TAG, "connection parameter update request failed");
+            }
             transition(ANCS_SIGNAL_BONDED);
             ESP_LOGI(TAG,
                      "encryption and bonding complete auth_mode=0x%x addr_type=%u",
@@ -2035,6 +2083,15 @@ static void handle_gattc_event(esp_gattc_cb_event_t event,
         if (!connection_peer_allowed(parameter->connect.remote_bda)) {
             ESP_LOGW(TAG, "rejected connection from unauthorized peer");
             (void)esp_ble_gap_disconnect(parameter->connect.remote_bda);
+            /* Upstream-port: the controller stopped advertising to serve
+             * this (now rejected) connection; our cached flag is stale.
+             * Clear it and re-arm instead of waiting for a GAP event that
+             * never arrives for foreign connections. */
+            taskENTER_CRITICAL(&s_shared_state_lock);
+            s_client.advertising = false;
+            s_client.advertising_starting = false;
+            taskEXIT_CRITICAL(&s_shared_state_lock);
+            schedule_advertising_retry();
             break;
         }
         taskENTER_CRITICAL(&s_shared_state_lock);
@@ -2452,6 +2509,9 @@ static void handle_gattc_event(esp_gattc_cb_event_t event,
                 parameter->disconnect.conn_id,
                 parameter->disconnect.remote_bda)) {
             ESP_LOGW(TAG, "ignored disconnect event from stale peer");
+            /* Upstream-port: a rejected/stale peer's disconnect never runs
+             * the normal recovery path; make sure advertising resumes. */
+            schedule_advertising_retry();
             break;
         }
         ESP_LOGW(TAG,
