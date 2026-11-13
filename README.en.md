@@ -47,17 +47,17 @@ From firmware 0.4.0 the relay remembers MQTT settings once they have connected.
 
 ## Supported Boards And v0.4.0 Build Facts
 
-The shared firmware uses a 4 MB minimum flash layout. All v0.4.9 images shown in the installer are compile, link, partition, and merged-image verified. ESP32-S2 is excluded because it has no BLE. ESP32-H2 is excluded because it has no Wi-Fi, and ESP32-P4 has no integrated Wi-Fi/BLE radio.
+The shared firmware uses a 4 MB minimum flash layout. All v0.4.10 images shown in the installer are compile, link, partition, and merged-image verified. ESP32-S2 is excluded because it has no BLE. ESP32-H2 is excluded because it has no Wi-Fi, and ESP32-P4 has no integrated Wi-Fi/BLE radio.
 
 | Target | Typical module/board | Factory image | v0.4.0 status |
 | --- | --- | ---: | --- |
-| `esp32` | ESP32-WROOM-32 / WROOM-D32 | 1,546,176 bytes | Build verified; this version not hardware validated |
-| `esp32c2` | ESP32-C2 | 1,573,856 bytes | Build verified; this version not hardware validated |
-| `esp32c3` | ESP32-C3 | 1,784,608 bytes | Build verified; this version not hardware validated |
-| `esp32c5` | ESP32-C5 | 1,920,448 bytes | Build verified; this version not hardware validated |
-| `esp32c6` | ESP32-C6 | 1,930,016 bytes | Build verified; this version not hardware validated |
-| `esp32c61` | ESP32-C61 | 1,851,136 bytes | Build verified; this version not hardware validated |
-| `esp32s3` | ESP32-S3 | 1,558,960 bytes | Build verified; this version not hardware validated |
+| `esp32` | ESP32-WROOM-32 / WROOM-D32 | 1,546,816 bytes | Build verified; this version not hardware validated |
+| `esp32c2` | ESP32-C2 | 1,574,608 bytes | Build verified; this version not hardware validated |
+| `esp32c3` | ESP32-C3 | 1,785,360 bytes | Build verified; this version not hardware validated |
+| `esp32c5` | ESP32-C5 | 1,921,200 bytes | Build verified; this version not hardware validated |
+| `esp32c6` | ESP32-C6 | 1,930,768 bytes | Build verified; this version not hardware validated |
+| `esp32c61` | ESP32-C61 | 1,851,872 bytes | Build verified; this version not hardware validated |
+| `esp32s3` | ESP32-S3 | 1,559,648 bytes | Build verified; this version not hardware validated |
 
 The table describes the published v0.4.0 images. Build verification, physical flashing, BLE enrollment, and live iPhone notification capture are separate validation scopes; boards without physical-device evidence are labeled as build verified only.
 
