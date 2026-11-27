@@ -36,6 +36,12 @@
 #define ANCS_DISCOVERY_TIMEOUT_MS INT64_C(15000)
 #define ANCS_SUBSCRIBE_TIMEOUT_MS INT64_C(10000)
 #define ANCS_PREPARE_TIMEOUT_MS INT64_C(90000)
+/* Hard ceiling for a live-but-stuck session (no ready, no DISCONNECT event).
+ * Comfortably beyond the 6 s Apple supervision timeout so a real link loss
+ * always reports itself first. */
+#define ANCS_SESSION_CEILING_MS INT64_C(180000)
+/* Grace after three failed close attempts before forcing the session shut. */
+#define ANCS_FORCED_CLOSE_GRACE_MS INT64_C(15000)
 #define ANCS_DISCOVERY_RETRIES 2U
 #define ANCS_APP_ID 0
 #define INVALID_HANDLE 0
@@ -164,6 +170,11 @@ typedef struct {
     int last_disconnect_reason;
     int64_t stage_deadline_ms;
     int64_t prepare_deadline_ms;
+    /* Hard ceiling for a live connection: even if every stage deadline is
+     * refreshed by progress, a session that never reaches ready and never
+     * delivers a DISCONNECT event must self-heal. */
+    int64_t session_deadline_ms;
+    int64_t forced_close_grace_ms;
     int64_t discovery_retry_due_ms;
     uint32_t discovery_retry_generation;
     uint16_t pending_notify_handle;
@@ -279,6 +290,8 @@ static esp_err_t open_replacement_window(void);
 static void enroll_timeout_callback(void *argument);
 static void check_advertising_liveness(void);
 static void check_connection_deadline(void);
+static void reset_connection_session(void);
+static void schedule_advertising_retry(void);
 
 static int64_t now_ms(void)
 {
@@ -1342,7 +1355,37 @@ static void check_connection_deadline(void)
         generation = s_client.generation;
         memcpy(peer, s_client.remote_bda, sizeof(peer));
     }
+    /* Last-resort self-heal: if the link is gone but no DISCONNECT event
+     * ever arrived (or it was filtered as stale), connected=true would
+     * block advertising forever. After three close attempts plus a full
+     * supervision timeout without any disconnect callback, force the local
+     * session closed so the advertising watchdog can re-arm. */
+    bool force_reset = false;
+    if (s_client.connected && !s_client.closing &&
+        s_client.session_deadline_ms != 0 &&
+        now >= s_client.session_deadline_ms) {
+        force_reset = true;
+        s_client.session_deadline_ms = 0;
+    } else if (s_client.connected && s_client.closing &&
+               s_client.close_attempts >= 3U &&
+               s_client.forced_close_grace_ms == 0) {
+        s_client.forced_close_grace_ms =
+            now + ANCS_FORCED_CLOSE_GRACE_MS;
+    } else if (s_client.connected && s_client.closing &&
+               s_client.close_attempts >= 3U &&
+               s_client.forced_close_grace_ms != 0 &&
+               now >= s_client.forced_close_grace_ms) {
+        force_reset = true;
+        s_client.forced_close_grace_ms = 0;
+        s_client.session_deadline_ms = 0;
+    }
     taskEXIT_CRITICAL(&s_shared_state_lock);
+    if (force_reset) {
+        ESP_LOGW(TAG, "forcing stale session closed (no disconnect event)");
+        reset_connection_session();
+        set_state(ANCS_STATE_RECOVERING);
+        schedule_advertising_retry();
+    }
     if (expired) {
         ESP_LOGW(TAG, "connection stage timeout stage=%s", ancs_client_state_name(stage));
         set_state(ANCS_STATE_RECOVERING);
@@ -1779,6 +1822,8 @@ static void reset_connection_session(void)
     s_client.mtu_ready = false;
     s_client.stage_deadline_ms = 0;
     s_client.prepare_deadline_ms = 0;
+    s_client.session_deadline_ms = 0;
+    s_client.forced_close_grace_ms = 0;
     s_client.discovery_retry_due_ms = 0;
     s_client.discovery_attempt = 0;
     const uint32_t generation = ++s_client.generation;
@@ -2096,8 +2141,48 @@ static void handle_gattc_event(esp_gattc_cb_event_t event,
         }
         taskENTER_CRITICAL(&s_shared_state_lock);
         if (s_client.connected) {
+            const bool zombie = !s_client.closing &&
+                s_client.stage_deadline_ms != 0 &&
+                now_ms() >= s_client.stage_deadline_ms;
+            if (zombie) {
+                /* Stale session: a previous link died without delivering a
+                 * DISCONNECT event (or was refused before authenticating),
+                 * yet connected=true still blocks start_advertising(). A
+                 * fresh CONNECT from the owner must reclaim the session
+                 * instead of being ignored, otherwise the device goes dark
+                 * forever ("manual tap in Settings does nothing"). */
+                ESP_LOGW(TAG,
+                         "reclaiming stale session for new connection "
+                         "stage=%s",
+                         ancs_client_state_name(s_client.state));
+                s_client.closing = false;
+                s_client.close_attempts = 0;
+                s_client.close_retry_due_ms = 0;
+                s_client.ready = false;
+                s_client.session_authenticated = false;
+                s_client.link_encrypted = false;
+                s_client.discovery_in_progress = false;
+                s_client.discovery_attempt = 0;
+                s_client.discovery_retry_due_ms = 0;
+                s_client.mtu_ready = false;
+                invalidate_ancs_handles_locked();
+                ++s_client.generation;
+                s_client.prepare_deadline_ms = now_ms() + ANCS_PREPARE_TIMEOUT_MS;
+                s_client.stage_deadline_ms = now_ms() + ANCS_AUTH_TIMEOUT_MS;
+                s_client.session_deadline_ms = now_ms() + ANCS_SESSION_CEILING_MS;
+                s_client.forced_close_grace_ms = 0;
+                memcpy(s_client.remote_bda,
+                       parameter->connect.remote_bda,
+                       sizeof(esp_bd_addr_t));
+                s_client.remote_addr_type = parameter->connect.ble_addr_type;
+                s_client.conn_id = parameter->connect.conn_id;
+                taskEXIT_CRITICAL(&s_shared_state_lock);
+            } else {
+                taskEXIT_CRITICAL(&s_shared_state_lock);
+                break;
+            }
+        } else {
             taskEXIT_CRITICAL(&s_shared_state_lock);
-            break;
         }
         ++s_client.generation;
         s_client.session_authenticated = false;
@@ -2111,6 +2196,8 @@ static void handle_gattc_event(esp_gattc_cb_event_t event,
         s_client.last_stage_error = 0;
         s_client.prepare_deadline_ms = now_ms() + ANCS_PREPARE_TIMEOUT_MS;
         s_client.stage_deadline_ms = now_ms() + ANCS_AUTH_TIMEOUT_MS;
+        s_client.session_deadline_ms = now_ms() + ANCS_SESSION_CEILING_MS;
+        s_client.forced_close_grace_ms = 0;
         invalidate_ancs_handles_locked();
         memcpy(s_client.remote_bda,
                parameter->connect.remote_bda,
@@ -2396,6 +2483,12 @@ static void handle_gattc_event(esp_gattc_cb_event_t event,
             }
             s_client.ready = ready;
             s_client.stage_deadline_ms = 0;
+            if (ready) {
+                /* A healthy ready link is governed by the supervision
+                 * timeout, not by a software ceiling. */
+                s_client.session_deadline_ms = 0;
+                s_client.forced_close_grace_ms = 0;
+            }
             s_client.discovery_retry_due_ms = 0;
             s_client.last_stage_error = 0;
             taskEXIT_CRITICAL(&s_shared_state_lock);
