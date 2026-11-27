@@ -384,29 +384,15 @@ static bool bond_list_contains_peer(const uint8_t peer_addr[ESP_BD_ADDR_LEN])
  * new pairing will re-bond the current address on success. */
 static void forget_stale_owner_bond(void)
 {
-    const int bond_count = current_bond_count();
-    if (bond_count <= 0) {
-        return;
-    }
-    esp_ble_bond_dev_t *bond_list =
-        calloc((size_t)bond_count, sizeof(*bond_list));
-    if (bond_list == NULL) {
-        return;
-    }
-    int list_count = bond_count;
-    if (esp_ble_get_bond_device_list(&list_count, bond_list) == ESP_OK) {
-        for (int index = 0; index < list_count; ++index) {
-            (void)esp_ble_remove_bond_device(bond_list[index].bd_addr);
-        }
-    }
-    free(bond_list);
-    /* Do NOT clear the enroll has_bond/bonded flags here: the removal is
-     * asynchronous and its completion handler (sync_existing_ble_bond)
-     * would otherwise see an empty raw list while a live session is still
-     * running, silently dropping ownership mid-connection. Ownership lives
-     * in the NVS flag; the raw entry is just a cache to be refreshed by
-     * the next successful pairing. */
-    ESP_LOGI(TAG, "cleared stale bond entries for rotated peer address");
+    /* v0.4.12: do NOT race the bond store against a live pairing. The old
+     * path removed every raw bond entry the moment OPEN_EVT saw a rotated
+     * RPA, while esp_ble_set_encryption() for that same link was already
+     * in flight. Bluedroid's SM then lost the LTK mid-handshake: iOS kept
+     * its side of the bond, the device fell back to a fresh static-PIN
+     * pairing that iOS refused (auth fail 0x66), and the phone stopped
+     * reconnecting until a manual re-pair — worse than the original storm.
+     * Ownership lives in the NVS flag; the raw entry is refreshed by the
+     * next successful AUTH_CMPL anyway, so leaving it alone is safe. */
 }
 
 static bool connection_peer_allowed(
