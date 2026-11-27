@@ -3145,12 +3145,27 @@ esp_err_t ancs_client_request_enroll(void)
     }
     if (count == 0 && owner_persisted_bonded()) {
         /* Ownership survives address rotation and power cycles: keep the
-         * advertising-as-owned state and refuse to open a manual pairing
-         * window — only an explicit replacement clears the flag. */
+         * advertising-as-owned state. But when the raw bond store is EMPTY
+         * there is no peer left to reconnect — refusing the enroll window
+         * here used to make "重新配对" a no-op after a factory reset of the
+         * phone side (iOS forgets its bond, device keeps the NVS flag, then
+         * rejects every pairing request). Open the window anyway; MITM +
+         * static PIN still gates who can bond. */
+        const int64_t now = now_ms();
         taskENTER_CRITICAL(&s_shared_state_lock);
-        const uint8_t owner_addr[ESP_BD_ADDR_LEN] = {0};
-        ble_enroll_note_bonded(&s_enroll, owner_addr);
+        if (s_client.connected || s_client.replace_pending) {
+            taskEXIT_CRITICAL(&s_shared_state_lock);
+            return ESP_ERR_INVALID_STATE;
+        }
+        clear_auth_failure_guard_locked();
+        const esp_err_t open_error = ble_enroll_open_window(&s_enroll, now);
         taskEXIT_CRITICAL(&s_shared_state_lock);
+        if (open_error != ESP_OK) {
+            return open_error;
+        }
+        (void)esp_timer_stop(enroll_timer);
+        (void)esp_timer_start_once(
+            enroll_timer, (uint64_t)CONFIG_ANCS_ENROLL_WINDOW_MS * 1000U);
         start_advertising();
         return ESP_OK;
     }
