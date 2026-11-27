@@ -384,15 +384,41 @@ static bool bond_list_contains_peer(const uint8_t peer_addr[ESP_BD_ADDR_LEN])
  * new pairing will re-bond the current address on success. */
 static void forget_stale_owner_bond(void)
 {
-    /* v0.4.12: do NOT race the bond store against a live pairing. The old
-     * path removed every raw bond entry the moment OPEN_EVT saw a rotated
-     * RPA, while esp_ble_set_encryption() for that same link was already
-     * in flight. Bluedroid's SM then lost the LTK mid-handshake: iOS kept
-     * its side of the bond, the device fell back to a fresh static-PIN
-     * pairing that iOS refused (auth fail 0x66), and the phone stopped
-     * reconnecting until a manual re-pair — worse than the original storm.
-     * Ownership lives in the NVS flag; the raw entry is refreshed by the
-     * next successful AUTH_CMPL anyway, so leaving it alone is safe. */
+    /* v0.4.13: remove only bonds that are NOT the live session's peer. The
+     * v0.4.11-era version removed EVERY raw bond entry the moment OPEN_EVT
+     * saw a rotated RPA, while esp_ble_set_encryption() for that same link
+     * was already in flight. Bluedroid's SM lost the LTK mid-handshake: iOS
+     * kept its side of the bond, the device fell back to a fresh static-PIN
+     * pairing that iOS refused (auth fail 0x66), and re-pairing itself broke
+     * — exactly the regression users hit after upgrading. Ownership lives
+     * in the NVS flag; stale entries from older addresses are still cleaned
+     * so the store cannot grow unbounded. */
+    const int bond_count = current_bond_count();
+    if (bond_count <= 0) {
+        return;
+    }
+    esp_ble_bond_dev_t *bond_list =
+        calloc((size_t)bond_count, sizeof(*bond_list));
+    if (bond_list == NULL) {
+        return;
+    }
+    taskENTER_CRITICAL(&s_shared_state_lock);
+    esp_bd_addr_t live_peer;
+    memcpy(live_peer, s_client.remote_bda, sizeof(live_peer));
+    const bool have_live_peer = s_client.connected;
+    taskEXIT_CRITICAL(&s_shared_state_lock);
+    int list_count = bond_count;
+    if (esp_ble_get_bond_device_list(&list_count, bond_list) == ESP_OK) {
+        for (int index = 0; index < list_count; ++index) {
+            if (have_live_peer &&
+                memcmp(bond_list[index].bd_addr, live_peer,
+                       ESP_BD_ADDR_LEN) == 0) {
+                continue; /* Never evict the peer we are pairing with. */
+            }
+            (void)esp_ble_remove_bond_device(bond_list[index].bd_addr);
+        }
+    }
+    free(bond_list);
 }
 
 static bool connection_peer_allowed(
@@ -2087,6 +2113,20 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event,
         (void)esp_ble_confirm_reply(
             parameter->ble_security.ble_req.bd_addr, false);
         break;
+
+    case ESP_GAP_BLE_PASSKEY_REQ_EVT: {
+        /* iOS (initiator) asks US to enter ITS passkey. Our IO capability is
+         * ESP_IO_CAP_OUT, so Bluedroid would otherwise sit and wait for a
+         * numeric input that can never happen on a headless board — the
+         * pairing stalls and Settings shows a spinner forever. We do not use
+         * the initiator's key (our own static PIN is what authenticates us),
+         * so reply with our configured passkey to complete the exchange. */
+        const uint32_t passkey = ancs_client_ble_passkey();
+        ESP_LOGI(TAG, "peer passkey requested; replying with configured PIN");
+        (void)esp_ble_passkey_reply(
+            parameter->ble_security.key_notif.bd_addr, true, passkey);
+        break;
+    }
 
     case ESP_GAP_BLE_PASSKEY_NOTIF_EVT:
         ESP_LOGI(TAG, "pairing PIN requested; consult the authorized setup page");
