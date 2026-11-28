@@ -93,8 +93,10 @@ def test_actual_ble_guard_and_enrollment_expiry_execute_with_virtual_time(tmp_pa
     functions = c_function(client, "static void clear_auth_failure_guard_locked(void)")
     # The guard consults the persisted-owner flag; stub it as "no owner" so
     # this test exercises the raw failure-count/lockout semantics.
-    functions += ("\nstatic bool owner_persisted_locked(void) { return false; }\n")
-    functions += "\n" + c_function(client, "static bool record_auth_failure_locked(int64_t failure_at_ms,\n                                       bool missing_local_bond)")
+    # The real record_auth_failure_locked takes the persisted-owner flag as
+    # its third parameter (v0.4.18+); tests pass false to exercise the raw
+    # failure-count/lockout semantics without a persisted owner.
+    functions += "\n" + c_function(client, "static bool record_auth_failure_locked(int64_t failure_at_ms,\n                                       bool missing_local_bond,\n                                       bool persisted_owner_locked)")
     constants = "\n".join(re.findall(r"^#define AUTH_FAILURE_(?:WINDOW_MS|REPAIR_THRESHOLD).*$", client, re.M))
     (tmp_path / "esp_err.h").write_text("typedef int esp_err_t;\n#define ESP_OK 0\n#define ESP_ERR_INVALID_ARG 258\n#define ESP_ERR_INVALID_STATE 259\n")
     source = tmp_path / "ble.c"
@@ -113,18 +115,18 @@ int main(void) {
     assert(ble_enroll_open_window(&s_enroll, 120001) == ESP_OK);
     assert(ble_enroll_window_active(&s_enroll, 120002));
     clear_auth_failure_guard_locked();
-    assert(!record_auth_failure_locked(0, true));
-    assert(!record_auth_failure_locked(120000, true));
-    assert(record_auth_failure_locked(240000, true)); /* adjacent interval inclusive */
+    assert(!record_auth_failure_locked(0, true, false));
+    assert(!record_auth_failure_locked(120000, true, false));
+    assert(record_auth_failure_locked(240000, true, false)); /* adjacent interval inclusive */
     assert(!ble_enroll_window_active(&s_enroll, 240000));
     clear_auth_failure_guard_locked();
-    assert(!record_auth_failure_locked(0, true));
-    assert(!record_auth_failure_locked(120001, true));
+    assert(!record_auth_failure_locked(0, true, false));
+    assert(!record_auth_failure_locked(120001, true, false));
     assert(s_client.auth_failure_count == 1);
-    assert(!record_auth_failure_locked(120002, true));
-    assert(record_auth_failure_locked(120003, true));
+    assert(!record_auth_failure_locked(120002, true, false));
+    assert(record_auth_failure_locked(120003, true, false));
     clear_auth_failure_guard_locked();
-    for (int i=0;i<300;i++) assert(!record_auth_failure_locked(i, false));
+    for (int i=0;i<300;i++) assert(!record_auth_failure_locked(i, false, false));
     assert(s_client.auth_failure_count == UINT8_MAX);
     clear_auth_failure_guard_locked();
     const uint8_t peer[6] = {1,2,3,4,5,6};
