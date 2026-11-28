@@ -101,15 +101,13 @@ static void console_write_async(const char *prefix, const char *json)
     }
     if (xQueueSend(queue, &line, 0) != pdTRUE) {
         free(line);
-        uint32_t dropped = 0;
+        /* Count drops only. NEVER log from this branch: it runs on the
+         * Bluedroid callback thread precisely when the console UART is
+         * wedged, and ESP_LOGW would block there again (B3 regression).
+         * The counter surfaces via the state JSON instead. */
         taskENTER_CRITICAL(&s_console_lock);
-        dropped = ++s_console_dropped;
+        ++s_console_dropped;
         taskEXIT_CRITICAL(&s_console_lock);
-        if ((dropped & 31U) == 1U) {
-            ESP_LOGW("NOTIF_SINK",
-                     "console queue full; %u lines dropped so far",
-                     (unsigned int)dropped);
-        }
     }
 }
 
@@ -388,6 +386,7 @@ int notification_sink_format_state_json(const char *state,
                                         bool data_source_subscribed,
                                         bool notification_source_subscribed,
                                         int auth_error,
+                                        uint32_t console_dropped,
                                         char *output,
                                         size_t output_capacity)
 {
@@ -404,12 +403,14 @@ int notification_sink_format_state_json(const char *state,
     writer_format(&writer,
                   ",\"session_id\":%" PRIu32 ",\"bonded\":%s"
                   ",\"data_source_subscribed\":%s"
-                  ",\"notification_source_subscribed\":%s,\"auth_error\":%d}",
+                  ",\"notification_source_subscribed\":%s,\"auth_error\":%d"
+                  ",\"console_dropped\":%" PRIu32 "}",
                   session_id,
                   json_bool(bonded),
                   json_bool(data_source_subscribed),
                   json_bool(notification_source_subscribed),
-                  auth_error);
+                  auth_error,
+                  console_dropped);
     return writer.failed ? -2 : 0;
 }
 
@@ -466,6 +467,13 @@ int notification_sink_publish_state(const char *state,
                                     bool notification_source_subscribed,
                                     int auth_error)
 {
+    /* Snapshot the console-drop counter first so this very line can carry
+     * the drop signal even when the console queue itself is full (SF-1:
+     * the drop branch must stay log-free). */
+    uint32_t console_dropped = 0;
+    taskENTER_CRITICAL(&s_console_lock);
+    console_dropped = s_console_dropped;
+    taskEXIT_CRITICAL(&s_console_lock);
     char json[768];
     const int result =
         notification_sink_format_state_json(state,
@@ -474,6 +482,7 @@ int notification_sink_publish_state(const char *state,
                                             data_source_subscribed,
                                             notification_source_subscribed,
                                             auth_error,
+                                            console_dropped,
                                             json,
                                             sizeof(json));
     if (result == 0) {

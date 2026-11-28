@@ -661,6 +661,7 @@ static void invalidate_ancs_handles(void)
  * suppression for the entire session. */
 static int64_t replay_cutoff_ms(void)
 {
+    bool backdated = false;
     taskENTER_CRITICAL(&s_shared_state_lock);
     if (!s_client.wall_clock_valid &&
         s_client.source_subscribed_monotonic_ms != 0 &&
@@ -671,12 +672,17 @@ static int64_t replay_cutoff_ms(void)
             s_client.source_subscribed_at_ms =
                 (int64_t)now_epoch * 1000LL -
                 (now_ms() - s_client.source_subscribed_monotonic_ms);
-            ESP_LOGI(TAG, "replay cutoff backdated after late SNTP sync");
+            backdated = true;
         }
     }
     const int64_t cutoff =
         s_client.wall_clock_valid ? s_client.source_subscribed_at_ms : 0;
     taskEXIT_CRITICAL(&s_shared_state_lock);
+    if (backdated) {
+        /* Log OUTSIDE the critical section: ESP_LOGW/LOGI can spin on a
+         * wedged UART console and must never run with interrupts masked. */
+        ESP_LOGI(TAG, "replay cutoff backdated after late SNTP sync");
+    }
     return cutoff;
 }
 
@@ -949,6 +955,9 @@ static void recover_data_stream(void)
 {
     taskENTER_CRITICAL(&s_shared_state_lock);
     s_client.ready = false;
+    /* The link is about to be torn down (or has already died): the session
+     * it belongs to is over, so any escalation queued for it is stale. */
+    s_client.reconnect_pending_actions = 0U;
     const bool connected = s_client.connected;
     esp_bd_addr_t remote_bda;
     memcpy(remote_bda, s_client.remote_bda, sizeof(remote_bda));
@@ -1984,6 +1993,10 @@ static void reset_connection_session(void)
     taskENTER_CRITICAL(&s_shared_state_lock);
     s_client.connected = false;
     s_client.bonded = false;
+    /* A fresh session invalidates any escalation queued for the old one:
+     * if a new link already succeeded while the worker tick was pending,
+     * executing a stale bond-wipe/restart would punish a healthy session. */
+    s_client.reconnect_pending_actions = 0U;
     if (owner && !ble_enroll_has_bond(&s_enroll)) {
         const uint8_t owner_addr[ESP_BD_ADDR_LEN] = {0};
         ble_enroll_note_bonded(&s_enroll, owner_addr);
@@ -2388,6 +2401,10 @@ static void handle_gattc_event(esp_gattc_cb_event_t event,
         s_client.ready_this_session = false;
         s_client.session_failure_counted = false;
         s_client.auth_failed_this_session = false;
+        /* Fresh link: drop escalations queued for the previous session so a
+         * bond-wipe/restart decided for a dead link cannot fire against this
+         * one before its outcome is known. */
+        s_client.reconnect_pending_actions = 0U;
         s_client.prepare_deadline_ms = now_ms() + ANCS_PREPARE_TIMEOUT_MS;
         s_client.stage_deadline_ms = now_ms() + ANCS_AUTH_TIMEOUT_MS;
         s_client.session_deadline_ms = now_ms() + ANCS_SESSION_CEILING_MS;
