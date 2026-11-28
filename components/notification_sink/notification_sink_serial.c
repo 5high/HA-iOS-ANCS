@@ -6,10 +6,113 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "esp_log.h"
 #include "platform_identity.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+#include "freertos/task.h"
 
 static notification_sink_observer_t s_observer;
 static void *s_observer_context;
+
+/* Console output runs on a dedicated low-priority task. printf+fflush from
+ * the Bluedroid callback task (state JSON) or the ANCS worker (notification
+ * JSON) blocks when the USB host stops draining the console endpoint — a
+ * stopped laptop is exactly the "phone left for a long time" scenario, and
+ * back-pressure there used to wedge the whole BLE stack with no watchdog to
+ * recover it. Lines are queued by pointer (ownership transfers to the writer
+ * task); when the queue is full we drop the line and count it rather than
+ * ever blocking a protocol task. */
+#define SINK_CONSOLE_QUEUE_DEPTH 16U
+#define SINK_CONSOLE_TASK_STACK 4096
+#define SINK_CONSOLE_TASK_PRIORITY 1
+
+static QueueHandle_t s_console_queue;
+static uint32_t s_console_dropped;
+static portMUX_TYPE s_console_lock = portMUX_INITIALIZER_UNLOCKED;
+
+static void console_writer_task(void *argument)
+{
+    (void)argument;
+    char *line = NULL;
+    for (;;) {
+        if (xQueueReceive(s_console_queue, &line, portMAX_DELAY) == pdTRUE &&
+            line != NULL) {
+            fputs(line, stdout);
+            fflush(stdout);
+            free(line);
+        }
+    }
+}
+
+static void ensure_console_writer(void)
+{
+    bool create = false;
+    taskENTER_CRITICAL(&s_console_lock);
+    if (s_console_queue == NULL) {
+        create = true; /* Claim creation; losers delete their spare. */
+    }
+    taskEXIT_CRITICAL(&s_console_lock);
+    if (!create) {
+        return;
+    }
+    QueueHandle_t queue = xQueueCreate(SINK_CONSOLE_QUEUE_DEPTH, sizeof(char *));
+    if (queue == NULL) {
+        return;
+    }
+    TaskHandle_t task = NULL;
+    if (xTaskCreate(console_writer_task, "ancs_console",
+                    SINK_CONSOLE_TASK_STACK, NULL, SINK_CONSOLE_TASK_PRIORITY,
+                    &task) != pdPASS) {
+        vQueueDelete(queue);
+        return;
+    }
+    taskENTER_CRITICAL(&s_console_lock);
+    const bool installed = s_console_queue == NULL;
+    if (installed) {
+        s_console_queue = queue;
+    }
+    taskEXIT_CRITICAL(&s_console_lock);
+    if (!installed) {
+        vTaskDelete(task);
+        vQueueDelete(queue);
+    }
+}
+
+static void console_write_async(const char *prefix, const char *json)
+{
+    const size_t capacity = strlen(prefix) + strlen(json) + 3U;
+    char *line = malloc(capacity);
+    if (line == NULL) {
+        return;
+    }
+    snprintf(line, capacity, "%s %s\n", prefix, json);
+    ensure_console_writer();
+    QueueHandle_t queue = NULL;
+    taskENTER_CRITICAL(&s_console_lock);
+    queue = s_console_queue;
+    taskEXIT_CRITICAL(&s_console_lock);
+    if (queue == NULL) {
+        /* Writer not up yet (early boot): keep the line, block like before. */
+        fputs(line, stdout);
+        fflush(stdout);
+        free(line);
+        return;
+    }
+    if (xQueueSend(queue, &line, 0) != pdTRUE) {
+        free(line);
+        uint32_t dropped = 0;
+        taskENTER_CRITICAL(&s_console_lock);
+        dropped = ++s_console_dropped;
+        taskEXIT_CRITICAL(&s_console_lock);
+        if ((dropped & 31U) == 1U) {
+            ESP_LOGW("NOTIF_SINK",
+                     "console queue full; %u lines dropped so far",
+                     (unsigned int)dropped);
+        }
+    }
+}
+
 
 typedef struct {
     char *buffer;
@@ -335,8 +438,7 @@ int notification_sink_publish(const ancs_notification_t *notification,
     const int result =
         notification_sink_format_json(notification, device_name, json, capacity);
     if (result == 0) {
-        printf("ANCS_NOTIFICATION_JSON %s\n", json);
-        fflush(stdout);
+        console_write_async("ANCS_NOTIFICATION_JSON", json);
         if (s_observer != NULL) {
             s_observer(notification, device_name, s_observer_context);
         }
@@ -375,8 +477,7 @@ int notification_sink_publish_state(const char *state,
                                             json,
                                             sizeof(json));
     if (result == 0) {
-        printf("ANCS_STATE_JSON %s\n", json);
-        fflush(stdout);
+        console_write_async("ANCS_STATE_JSON", json);
     }
     return result;
 }
