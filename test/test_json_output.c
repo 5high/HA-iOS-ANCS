@@ -107,10 +107,12 @@ TEST_CASE("state JSON contains subscription and auth failure evidence", "[ancs][
                                                           true,
                                                           false,
                                                           0x05,
+                                                          7,
                                                           output,
                                                           sizeof(output)));
     TEST_ASSERT_NOT_NULL(strstr(output, "\"state\":\"recovering\""));
     TEST_ASSERT_NOT_NULL(strstr(output, "\"auth_error\":5"));
+    TEST_ASSERT_NOT_NULL(strstr(output, "\"console_dropped\":7"));
     TEST_ASSERT_NOT_NULL(strstr(output,
                                 "\"notification_source_subscribed\":false"));
 }

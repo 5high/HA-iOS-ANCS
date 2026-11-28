@@ -59,9 +59,15 @@ def test_led_observer_skips_preexisting():
     )
 
 
-def test_advertising_backoff_is_bounded_to_thirty_seconds():
+def test_advertising_backoff_is_bounded_and_policy_owned():
+    # v0.4.18 moved the backoff into ancs_reconnect_policy.h so it is
+    # host-testable; the cap tightened from 30 s to 8 s so a bonded phone
+    # always sees advertisements again well within one refresh window.
     source = _src(CLIENT_SOURCE)
-    assert "#define ADVERTISING_BACKOFF_MAX_MS 30000U" in source
+    policy = _src(ROOT / "components" / "ancs_client" / "include" /
+                  "ancs_reconnect_policy.h")
+    assert "ANCS_RECONNECT_ADVERTISE_MAX_MS UINT32_C(8000)" in policy
+    assert "ancs_reconnect_advertise_delay_ms(" in source
 
 
 def test_date_predates_subscription_compiles_and_behaves(tmp_path):

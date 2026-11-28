@@ -22,6 +22,7 @@ int notification_sink_format_state_json(const char *state,
                                         bool data_source_subscribed,
                                         bool notification_source_subscribed,
                                         int auth_error,
+                                        uint32_t console_dropped,
                                         char *output,
                                         size_t output_capacity);
 int notification_sink_publish(const ancs_notification_t *notification,

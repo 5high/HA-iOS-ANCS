@@ -10,6 +10,7 @@
 
 #include "ancs_app_resolver.h"
 #include "ancs_protocol.h"
+#include "ancs_reconnect_policy.h"
 #include "ble_enroll.h"
 #include "driver/gpio.h"
 #include "esp_bt.h"
@@ -20,6 +21,9 @@
 #include "esp_gattc_api.h"
 #include "esp_log.h"
 #include "esp_mac.h"
+#include "esp_random.h"
+#include "esp_system.h"
+#include "esp_task_wdt.h"
 #include "esp_timer.h"
 #include "provisioning_runtime.h"
 #include "provision_store.h"
@@ -36,13 +40,20 @@
 #define ANCS_DISCOVERY_TIMEOUT_MS INT64_C(15000)
 #define ANCS_SUBSCRIBE_TIMEOUT_MS INT64_C(10000)
 #define ANCS_PREPARE_TIMEOUT_MS INT64_C(90000)
+/* Hard ceiling for a live-but-stuck session (no ready, no DISCONNECT event).
+ * Comfortably beyond the 6 s Apple supervision timeout so a real link loss
+ * always reports itself first. */
+#define ANCS_SESSION_CEILING_MS INT64_C(180000)
+/* Grace after three failed close attempts before forcing the session shut. */
+#define ANCS_FORCED_CLOSE_GRACE_MS INT64_C(15000)
 #define ANCS_DISCOVERY_RETRIES 2U
 #define ANCS_APP_ID 0
 #define INVALID_HANDLE 0
 #define ADV_DATA_PENDING (1U << 0)
 #define SCAN_RESPONSE_PENDING (1U << 1)
 #define CONTROL_REQUEST_MAX (CONFIG_ANCS_APP_ID_MAX + 3U)
-#define ADVERTISING_BACKOFF_MAX_MS 30000U
+/* Advertising retry backoff lives in ancs_reconnect_policy.h so it can be
+ * unit-tested on the host with virtual time. */
 /* Upstream-port (1bobby-git 881b633): periodic advertising refresh. The
  * controller silently stops legacy advertising on every incoming
  * connection — including one we reject — so the cached "advertising"
@@ -164,6 +175,11 @@ typedef struct {
     int last_disconnect_reason;
     int64_t stage_deadline_ms;
     int64_t prepare_deadline_ms;
+    /* Hard ceiling for a live connection: even if every stage deadline is
+     * refreshed by progress, a session that never reaches ready and never
+     * delivers a DISCONNECT event must self-heal. */
+    int64_t session_deadline_ms;
+    int64_t forced_close_grace_ms;
     int64_t discovery_retry_due_ms;
     uint32_t discovery_retry_generation;
     uint16_t pending_notify_handle;
@@ -179,10 +195,22 @@ typedef struct {
      * LED/MQTT. Zero means "no valid cutoff". */
     int64_t source_subscribed_at_ms;
     bool wall_clock_valid;
+    /* Monotonic timestamp of the subscribe instant. When SNTP lands only
+     * after subscribing, this anchor lets us backdate the wall-clock cutoff
+     * instead of losing replay suppression for the whole session. */
+    int64_t source_subscribed_monotonic_ms;
+
+    /* Reconnect escalation ladder (see ancs_reconnect_policy.h). Touched
+     * under s_shared_state_lock; pending actions are executed by the worker
+     * task so bond/NVS work never runs on the Bluedroid callback thread. */
+    ancs_reconnect_policy_t reconnect;
+    bool ready_this_session;
+    bool session_failure_counted;
+    bool auth_failed_this_session;
+    unsigned reconnect_pending_actions;
 
     bool advertising;
     bool advertising_starting;
-    uint8_t advertising_attempt;
     uint8_t discovery_attempt;
     uint8_t adv_config_pending;
     int64_t advertising_refresh_due_ms;
@@ -279,6 +307,8 @@ static esp_err_t open_replacement_window(void);
 static void enroll_timeout_callback(void *argument);
 static void check_advertising_liveness(void);
 static void check_connection_deadline(void);
+static void reset_connection_session(void);
+static void schedule_advertising_retry(void);
 
 static int64_t now_ms(void)
 {
@@ -371,6 +401,15 @@ static bool bond_list_contains_peer(const uint8_t peer_addr[ESP_BD_ADDR_LEN])
  * new pairing will re-bond the current address on success. */
 static void forget_stale_owner_bond(void)
 {
+    /* v0.4.13: remove only bonds that are NOT the live session's peer. The
+     * v0.4.11-era version removed EVERY raw bond entry the moment OPEN_EVT
+     * saw a rotated RPA, while esp_ble_set_encryption() for that same link
+     * was already in flight. Bluedroid's SM lost the LTK mid-handshake: iOS
+     * kept its side of the bond, the device fell back to a fresh static-PIN
+     * pairing that iOS refused (auth fail 0x66), and re-pairing itself broke
+     * — exactly the regression users hit after upgrading. Ownership lives
+     * in the NVS flag; stale entries from older addresses are still cleaned
+     * so the store cannot grow unbounded. */
     const int bond_count = current_bond_count();
     if (bond_count <= 0) {
         return;
@@ -380,20 +419,23 @@ static void forget_stale_owner_bond(void)
     if (bond_list == NULL) {
         return;
     }
+    taskENTER_CRITICAL(&s_shared_state_lock);
+    esp_bd_addr_t live_peer;
+    memcpy(live_peer, s_client.remote_bda, sizeof(live_peer));
+    const bool have_live_peer = s_client.connected;
+    taskEXIT_CRITICAL(&s_shared_state_lock);
     int list_count = bond_count;
     if (esp_ble_get_bond_device_list(&list_count, bond_list) == ESP_OK) {
         for (int index = 0; index < list_count; ++index) {
+            if (have_live_peer &&
+                memcmp(bond_list[index].bd_addr, live_peer,
+                       ESP_BD_ADDR_LEN) == 0) {
+                continue; /* Never evict the peer we are pairing with. */
+            }
             (void)esp_ble_remove_bond_device(bond_list[index].bd_addr);
         }
     }
     free(bond_list);
-    /* Do NOT clear the enroll has_bond/bonded flags here: the removal is
-     * asynchronous and its completion handler (sync_existing_ble_bond)
-     * would otherwise see an empty raw list while a live session is still
-     * running, silently dropping ownership mid-connection. Ownership lives
-     * in the NVS flag; the raw entry is just a cache to be refreshed by
-     * the next successful pairing. */
-    ESP_LOGI(TAG, "cleared stale bond entries for rotated peer address");
 }
 
 static bool connection_peer_allowed(
@@ -552,7 +594,8 @@ static bool owner_persisted_locked(void)
 }
 
 static bool record_auth_failure_locked(int64_t failure_at_ms,
-                                       bool missing_local_bond)
+                                       bool missing_local_bond,
+                                       bool persisted_owner_locked)
 {
     if (s_client.auth_failure_count == 0U ||
         failure_at_ms < s_client.last_auth_failure_ms ||
@@ -569,7 +612,7 @@ static bool record_auth_failure_locked(int64_t failure_at_ms,
      * failures from it are expected re-pairing churn, not an attack. The
      * repair lockout only guards against unknown peers hammering us while
      * we have no owner at all. */
-    if (missing_local_bond && !owner_persisted_locked() &&
+    if (missing_local_bond && !persisted_owner_locked &&
         s_client.auth_failure_count >= AUTH_FAILURE_REPAIR_THRESHOLD) {
         s_client.pairing_repair_required = true;
         ble_enroll_close_window(&s_enroll);
@@ -592,6 +635,7 @@ static void invalidate_ancs_handles_locked(void)
     s_client.notification_source_subscribed = false;
     s_client.source_subscribed_at_ms = 0;
     s_client.wall_clock_valid = false;
+    s_client.source_subscribed_monotonic_ms = 0;
     s_client.service_start_handle = INVALID_HANDLE;
     s_client.service_end_handle = INVALID_HANDLE;
     s_client.notification_source_handle = INVALID_HANDLE;
@@ -608,6 +652,38 @@ static void invalidate_ancs_handles(void)
     taskENTER_CRITICAL(&s_shared_state_lock);
     invalidate_ancs_handles_locked();
     taskEXIT_CRITICAL(&s_shared_state_lock);
+}
+
+/* Wall-clock replay cutoff for this connection, or 0 when unknown. The
+ * subscribe handler snapshots it only if SNTP has already landed; when the
+ * clock arrives late (typical right after boot), backdate the cutoff from
+ * the monotonic subscribe anchor on first use instead of losing replay
+ * suppression for the entire session. */
+static int64_t replay_cutoff_ms(void)
+{
+    bool backdated = false;
+    taskENTER_CRITICAL(&s_shared_state_lock);
+    if (!s_client.wall_clock_valid &&
+        s_client.source_subscribed_monotonic_ms != 0 &&
+        provisioning_runtime_time_synced()) {
+        const time_t now_epoch = time(NULL);
+        if (now_epoch > 1600000000) {
+            s_client.wall_clock_valid = true;
+            s_client.source_subscribed_at_ms =
+                (int64_t)now_epoch * 1000LL -
+                (now_ms() - s_client.source_subscribed_monotonic_ms);
+            backdated = true;
+        }
+    }
+    const int64_t cutoff =
+        s_client.wall_clock_valid ? s_client.source_subscribed_at_ms : 0;
+    taskEXIT_CRITICAL(&s_shared_state_lock);
+    if (backdated) {
+        /* Log OUTSIDE the critical section: ESP_LOGW/LOGI can spin on a
+         * wedged UART console and must never run with interrupts masked. */
+        ESP_LOGI(TAG, "replay cutoff backdated after late SNTP sync");
+    }
+    return cutoff;
 }
 
 static void free_work_item(work_item_t *item)
@@ -846,17 +922,17 @@ static bool date_predates_subscription(const char *date_raw, int64_t cutoff_ms)
 
 static void finalize_active_notification(void)
 {
+    const int64_t cutoff = replay_cutoff_ms();
     if (s_worker.active_notification.event_id <= 1U &&
-        s_client.wall_clock_valid &&
-        s_client.source_subscribed_at_ms > 0 &&
+        cutoff > 0 &&
         date_predates_subscription(s_worker.active_notification.date_raw,
-                                   s_client.source_subscribed_at_ms)) {
+                                   cutoff)) {
         s_worker.active_notification.event_flags |= ANCS_EVENT_FLAG_PRE_EXISTING;
         /* Remember the cutoff and this uid so the next reconnect's replay of
          * the same entry is dropped before we spend a Control Point request
          * on it. */
         replay_uid_remember(s_worker.active_notification.uid);
-        s_worker.replay_cutoff_ms = s_client.source_subscribed_at_ms;
+        s_worker.replay_cutoff_ms = cutoff;
         ESP_LOGI(TAG,
                  "replay suppressed uid=%" PRIu32 " date=\"%s\"",
                  s_worker.active_notification.uid,
@@ -879,6 +955,9 @@ static void recover_data_stream(void)
 {
     taskENTER_CRITICAL(&s_shared_state_lock);
     s_client.ready = false;
+    /* The link is about to be torn down (or has already died): the session
+     * it belongs to is over, so any escalation queued for it is stale. */
+    s_client.reconnect_pending_actions = 0U;
     const bool connected = s_client.connected;
     esp_bd_addr_t remote_bda;
     memcpy(remote_bda, s_client.remote_bda, sizeof(remote_bda));
@@ -1167,16 +1246,104 @@ static void process_data_fragment(data_fragment_t *fragment)
             complete_app_name_resolution();
         }
     } else if (result == ANCS_PARSER_ERROR) {
+        const int error_code =
+            s_worker.active_request_kind ==
+                    ACTIVE_REQUEST_NOTIFICATION_ATTRIBUTES
+                ? s_worker.parser.error_code
+                : s_worker.app_parser.error_code;
+        if (error_code == ANCS_PROTOCOL_ERR_UID_MISMATCH &&
+            s_worker.active_request_kind ==
+                ACTIVE_REQUEST_NOTIFICATION_ATTRIBUTES) {
+            /* Late-but-valid response to an earlier request that already
+             * timed out (typical while iOS is busy mid-replay). ATT answers
+             * in order, so this orphan belongs to a uid we no longer care
+             * about: drop it and re-arm the parser for the CURRENT request.
+             * Treating it as link corruption here would disconnect and
+             * re-trigger the full Notification Center replay storm this
+             * whole path exists to avoid. */
+            if (s_worker.active_canceled) {
+                finish_canceled_request();
+            } else {
+                ESP_LOGW(TAG,
+                         "dropped orphan data-source response uid=%" PRIu32
+                         " expected=%" PRIu32 "; keeping link",
+                         s_worker.parser.response_uid,
+                         s_worker.active_event.uid);
+                ancs_data_parser_init(&s_worker.parser,
+                                      &s_worker.active_notification,
+                                      s_worker.active_event.uid,
+                                      ANCS_ATTR_MASK_REQUIRED);
+            }
+            return;
+        }
         if (s_worker.active_canceled) {
             finish_canceled_request();
         } else {
-            const int error_code =
-                s_worker.active_request_kind ==
-                        ACTIVE_REQUEST_NOTIFICATION_ATTRIBUTES
-                    ? s_worker.parser.error_code
-                    : s_worker.app_parser.error_code;
             retry_or_finish_active(error_code, true);
         }
+    }
+}
+
+/* Execute reconnect-ladder escalations decided under the state lock. Runs on
+ * the worker task only: bond repair touches NVS and must never run on the
+ * Bluedroid callback thread. */
+static void execute_reconnect_escalations(void)
+{
+    taskENTER_CRITICAL(&s_shared_state_lock);
+    const unsigned actions = s_client.reconnect_pending_actions;
+    s_client.reconnect_pending_actions = 0U;
+    taskEXIT_CRITICAL(&s_shared_state_lock);
+    if (actions == 0U) {
+        return;
+    }
+    if (actions & ANCS_RECONNECT_ESCALATE_BOND_REPAIR) {
+        ESP_LOGW(TAG,
+                 "reconnect ladder: repeated auth/encryption failures; "
+                 "deleting local bonds and opening the enrollment window");
+        const esp_err_t error = ancs_client_replace_enrollment(true);
+        if (error != ESP_OK) {
+            ESP_LOGE(TAG, "bond repair failed: %s", esp_err_to_name(error));
+        }
+    }
+    if (actions & ANCS_RECONNECT_ESCALATE_STACK_RESET) {
+        /* One-shot per failure streak (policy-gated), so a hardware fault
+         * cannot reboot-loop. Last resort for wedged controller state that
+         * no amount of advertising retries heals. EARLY log bypasses the
+         * possibly-stuck buffered console before we pull the plug. */
+        ESP_EARLY_LOGE(TAG,
+                       "reconnect ladder: %u consecutive failed sessions; "
+                       "restarting to rebuild the BLE subsystem",
+                       (unsigned int)s_client.reconnect.session_failures);
+        vTaskDelay(pdMS_TO_TICKS(100));
+        esp_restart();
+    }
+}
+
+/* Record one failed connection session (a link that never reached ready) and
+ * queue whatever escalation the ladder decides. At most once per session:
+ * stage timeout, forced reset and the late DISCONNECT event all describe the
+ * same dead session. */
+static void note_session_failure(ancs_reconnect_failure_t failure)
+{
+    unsigned actions = 0U;
+    unsigned streak = 0U;
+    unsigned hard_streak = 0U;
+    taskENTER_CRITICAL(&s_shared_state_lock);
+    if (!s_client.session_failure_counted && !s_client.ready_this_session) {
+        s_client.session_failure_counted = true;
+        actions = ancs_reconnect_note_session_failure(
+            &s_client.reconnect, failure, (uint64_t)now_ms());
+        streak = s_client.reconnect.session_failures;
+        hard_streak = s_client.reconnect.hard_failures;
+        s_client.reconnect_pending_actions |= actions;
+    }
+    const bool counted = actions != 0U || streak != 0U;
+    taskEXIT_CRITICAL(&s_shared_state_lock);
+    if (counted) {
+        ESP_LOGW(TAG,
+                 "session failure class=%u streak=%u hard_streak=%u "
+                 "escalations=0x%x",
+                 (unsigned int)failure, streak, hard_streak, actions);
     }
 }
 
@@ -1187,10 +1354,25 @@ static void worker_task(void *argument)
     ancs_app_resolver_init(&s_worker.app_resolver);
     s_worker.generation = current_generation();
 
+    /* Watchdog: this task drives every recovery deadline. If it ever wedges
+     * (e.g. blocked console I/O), TWDT surfaces it in the log instead of a
+     * silently deaf device. The loop period is ~50 ms, so the 5 s global
+     * timeout only fires on genuine stalls. */
+    const esp_err_t wdt_error = esp_task_wdt_add(NULL);
+    const bool wdt_subscribed = wdt_error == ESP_OK;
+    if (wdt_error != ESP_OK && wdt_error != ESP_ERR_INVALID_STATE) {
+        ESP_LOGW(TAG, "worker watchdog subscription failed: %s",
+                 esp_err_to_name(wdt_error));
+    }
+
     for (;;) {
+        if (wdt_subscribed) {
+            esp_task_wdt_reset();
+        }
         check_connection_deadline();
         enroll_timeout_callback(NULL); /* Also covers lost/old timer wakeups. */
         check_advertising_liveness();
+        execute_reconnect_escalations();
         const uint32_t generation = current_generation();
         if (s_worker.generation != generation) {
             reset_worker_session(generation);
@@ -1229,8 +1411,12 @@ static void worker_task(void *argument)
 
         if (s_worker.active && now_ms() >= s_worker.deadline_ms) {
             if (s_worker.active_canceled) {
+                /* The notification was Removed mid-fetch (user swiped it
+                 * away — routine). iOS legitimately stops answering for a
+                 * dead uid; that is NOT a broken link. Ending the request
+                 * without teardown avoids a full replay over a tap on the
+                 * phone screen. */
                 finish_canceled_request();
-                recover_data_stream();
             } else {
                 retry_or_finish_active(ANCS_PROTOCOL_ERR_TIMEOUT, true);
             }
@@ -1342,9 +1528,53 @@ static void check_connection_deadline(void)
         generation = s_client.generation;
         memcpy(peer, s_client.remote_bda, sizeof(peer));
     }
+    /* Last-resort self-heal: if the link is gone but no DISCONNECT event
+     * ever arrived (or it was filtered as stale), connected=true would
+     * block advertising forever. After three close attempts plus a full
+     * supervision timeout without any disconnect callback, force the local
+     * session closed so the advertising watchdog can re-arm. */
+    bool force_reset = false;
+    esp_gatt_if_t stale_gattc_if = ESP_GATT_IF_NONE;
+    uint16_t stale_conn_id = 0;
+    if (s_client.connected && !s_client.closing &&
+        s_client.session_deadline_ms != 0 &&
+        now >= s_client.session_deadline_ms) {
+        force_reset = true;
+        s_client.session_deadline_ms = 0;
+        stale_gattc_if = s_client.gattc_if;
+        stale_conn_id = s_client.conn_id;
+    } else if (s_client.connected && s_client.closing &&
+               s_client.close_attempts >= 3U &&
+               s_client.forced_close_grace_ms == 0) {
+        s_client.forced_close_grace_ms =
+            now + ANCS_FORCED_CLOSE_GRACE_MS;
+    } else if (s_client.connected && s_client.closing &&
+               s_client.close_attempts >= 3U &&
+               s_client.forced_close_grace_ms != 0 &&
+               now >= s_client.forced_close_grace_ms) {
+        force_reset = true;
+        s_client.forced_close_grace_ms = 0;
+        s_client.session_deadline_ms = 0;
+        stale_gattc_if = s_client.gattc_if;
+        stale_conn_id = s_client.conn_id;
+    }
     taskEXIT_CRITICAL(&s_shared_state_lock);
+    if (force_reset) {
+        ESP_LOGW(TAG, "forcing stale session closed (no disconnect event)");
+        /* The GATT virtual channel of a link whose DISCONNECT event never
+         * arrived stays open inside Bluedroid; close it explicitly or every
+         * such incident leaks a tcb/conn_id slot forever. */
+        if (stale_gattc_if != ESP_GATT_IF_NONE) {
+            (void)esp_ble_gattc_close(stale_gattc_if, stale_conn_id);
+        }
+        note_session_failure(ANCS_RECONNECT_FAIL_TRANSIENT);
+        reset_connection_session();
+        set_state(ANCS_STATE_RECOVERING);
+        schedule_advertising_retry();
+    }
     if (expired) {
         ESP_LOGW(TAG, "connection stage timeout stage=%s", ancs_client_state_name(stage));
+        note_session_failure(ANCS_RECONNECT_FAIL_TRANSIENT);
         set_state(ANCS_STATE_RECOVERING);
     }
     if (request_close) {
@@ -1403,6 +1633,7 @@ static void discovery_retry_callback(void *argument)
 
 static void schedule_advertising_retry(void)
 {
+    const uint32_t random_value = esp_random();
     taskENTER_CRITICAL(&s_shared_state_lock);
     if (s_client.connected || s_client.advertising ||
         s_client.advertising_starting ||
@@ -1410,16 +1641,10 @@ static void schedule_advertising_retry(void)
         taskEXIT_CRITICAL(&s_shared_state_lock);
         return;
     }
-    const uint32_t shift =
-        s_client.advertising_attempt < 4U ? s_client.advertising_attempt : 4U;
-    uint32_t delay_ms = 250U << shift;
-    if (delay_ms > ADVERTISING_BACKOFF_MAX_MS) {
-        delay_ms = ADVERTISING_BACKOFF_MAX_MS;
-    }
-    if (s_client.advertising_attempt < UINT8_MAX) {
-        s_client.advertising_attempt++;
-    }
+    const uint32_t delay_ms = ancs_reconnect_advertise_delay_ms(
+        &s_client.reconnect, random_value);
     taskEXIT_CRITICAL(&s_shared_state_lock);
+    ESP_LOGI(TAG, "advertising retry scheduled in %u ms", (unsigned int)delay_ms);
     (void)esp_timer_stop(s_client.advertising_retry_timer);
     (void)esp_timer_start_once(
         s_client.advertising_retry_timer, (uint64_t)delay_ms * 1000U);
@@ -1514,6 +1739,7 @@ static void start_discovery(void)
     s_client.notification_source_handle = INVALID_HANDLE;
     s_client.source_subscribed_at_ms = 0;
     s_client.wall_clock_valid = false;
+    s_client.source_subscribed_monotonic_ms = 0;
     s_client.data_source_handle = INVALID_HANDLE;
     s_client.control_point_handle = INVALID_HANDLE;
     s_client.data_source_cccd_handle = INVALID_HANDLE;
@@ -1767,6 +1993,10 @@ static void reset_connection_session(void)
     taskENTER_CRITICAL(&s_shared_state_lock);
     s_client.connected = false;
     s_client.bonded = false;
+    /* A fresh session invalidates any escalation queued for the old one:
+     * if a new link already succeeded while the worker tick was pending,
+     * executing a stale bond-wipe/restart would punish a healthy session. */
+    s_client.reconnect_pending_actions = 0U;
     if (owner && !ble_enroll_has_bond(&s_enroll)) {
         const uint8_t owner_addr[ESP_BD_ADDR_LEN] = {0};
         ble_enroll_note_bonded(&s_enroll, owner_addr);
@@ -1779,6 +2009,8 @@ static void reset_connection_session(void)
     s_client.mtu_ready = false;
     s_client.stage_deadline_ms = 0;
     s_client.prepare_deadline_ms = 0;
+    s_client.session_deadline_ms = 0;
+    s_client.forced_close_grace_ms = 0;
     s_client.discovery_retry_due_ms = 0;
     s_client.discovery_attempt = 0;
     const uint32_t generation = ++s_client.generation;
@@ -1866,7 +2098,7 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event,
         const bool stop_disallowed = start_succeeded && !connected && !allowed;
         if (start_succeeded && !connected && allowed) {
             s_client.advertising = true;
-            s_client.advertising_attempt = 0U;
+            ancs_reconnect_advertise_ok(&s_client.reconnect);
         } else {
             s_client.advertising = false;
         }
@@ -1958,15 +2190,19 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event,
         } else {
             const int64_t failure_at_ms = now_ms();
             const bool missing_local_bond = current_bond_count() == 0;
+            /* NVS read outside the critical section (see owner_persisted_locked). */
+            const bool persisted_owner = owner_persisted_bonded();
             taskENTER_CRITICAL(&s_shared_state_lock);
             s_client.auth_error =
                 parameter->ble_security.auth_cmpl.fail_reason;
             s_client.last_auth_error = s_client.auth_error;
             s_client.last_auth_error_at_ms = (uint64_t)failure_at_ms;
+            s_client.auth_failed_this_session = true;
             const int auth_error = s_client.auth_error;
             const bool repair_required =
                 record_auth_failure_locked(failure_at_ms,
-                                           missing_local_bond);
+                                           missing_local_bond,
+                                           persisted_owner);
             const uint8_t failure_count =
                 s_client.auth_failure_count;
             taskEXIT_CRITICAL(&s_shared_state_lock);
@@ -2012,6 +2248,8 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event,
             break;
         }
         const int remaining = sync_existing_ble_bond();
+        /* NVS read outside the critical section (see owner_persisted_locked). */
+        const bool persisted_owner_after_wipe = owner_persisted_bonded();
         bool should_open = false;
         taskENTER_CRITICAL(&s_shared_state_lock);
         if (remaining == 0) {
@@ -2021,7 +2259,7 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event,
         /* A mid-session stale-bond wipe is not an explicit replacement:
          * with a persisted owner, keep advertising as owned and let the
          * phone re-pair transparently instead of demanding manual pairing. */
-        if (should_open && owner_persisted_locked()) {
+        if (should_open && persisted_owner_after_wipe) {
             should_open = false;
         }
         s_client.replace_pending = false;
@@ -2056,6 +2294,20 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event,
         (void)esp_ble_confirm_reply(
             parameter->ble_security.ble_req.bd_addr, false);
         break;
+
+    case ESP_GAP_BLE_PASSKEY_REQ_EVT: {
+        /* iOS (initiator) asks US to enter ITS passkey. Our IO capability is
+         * ESP_IO_CAP_OUT, so Bluedroid would otherwise sit and wait for a
+         * numeric input that can never happen on a headless board — the
+         * pairing stalls and Settings shows a spinner forever. We do not use
+         * the initiator's key (our own static PIN is what authenticates us),
+         * so reply with our configured passkey to complete the exchange. */
+        const uint32_t passkey = ancs_client_ble_passkey();
+        ESP_LOGI(TAG, "peer passkey requested; replying with configured PIN");
+        (void)esp_ble_passkey_reply(
+            parameter->ble_security.key_notif.bd_addr, true, passkey);
+        break;
+    }
 
     case ESP_GAP_BLE_PASSKEY_NOTIF_EVT:
         ESP_LOGI(TAG, "pairing PIN requested; consult the authorized setup page");
@@ -2094,10 +2346,45 @@ static void handle_gattc_event(esp_gattc_cb_event_t event,
             schedule_advertising_retry();
             break;
         }
+        bool reclaimed = false;
+        ancs_client_state_t reclaimed_stage = ANCS_STATE_BOOT;
+        esp_gatt_if_t old_gattc_if = ESP_GATT_IF_NONE;
+        uint16_t old_conn_id = 0;
         taskENTER_CRITICAL(&s_shared_state_lock);
         if (s_client.connected) {
-            taskEXIT_CRITICAL(&s_shared_state_lock);
-            break;
+            const bool zombie = !s_client.closing &&
+                s_client.stage_deadline_ms != 0 &&
+                now_ms() >= s_client.stage_deadline_ms;
+            if (!zombie) {
+                /* The controller stopped advertising to serve this
+                 * connection; our cached flag is stale. Clear it here and
+                 * re-arm below instead of waiting for the periodic refresh. */
+                s_client.advertising = false;
+                s_client.advertising_starting = false;
+                taskEXIT_CRITICAL(&s_shared_state_lock);
+                /* A second live link while we still hold a healthy session
+                 * must be explicitly rejected: silently ignoring it leaves
+                 * the new ACL dangling until iOS gives up, and every retry
+                 * repeats the stall ("phone came back but cannot connect
+                 * for minutes"). */
+                ESP_LOGW(TAG,
+                         "rejecting second connection while session alive "
+                         "stage=%s",
+                         ancs_client_state_name(s_client.state));
+                (void)esp_ble_gap_disconnect(parameter->connect.remote_bda);
+                schedule_advertising_retry();
+                break;
+            }
+            /* Stale session: a previous link died without delivering a
+             * DISCONNECT event (or was refused before authenticating), yet
+             * connected=true still blocks start_advertising(). A fresh
+             * CONNECT from the owner must reclaim the session instead of
+             * being ignored, otherwise the device goes dark forever
+             * ("manual tap in Settings does nothing"). */
+            reclaimed = true;
+            reclaimed_stage = s_client.state;
+            old_gattc_if = s_client.gattc_if;
+            old_conn_id = s_client.conn_id;
         }
         ++s_client.generation;
         s_client.session_authenticated = false;
@@ -2106,11 +2393,22 @@ static void handle_gattc_event(esp_gattc_cb_event_t event,
         s_client.close_attempts = 0;
         s_client.close_retry_due_ms = 0;
         s_client.mtu_ready = false;
+        s_client.discovery_in_progress = false;
         s_client.discovery_attempt = 0;
         s_client.discovery_retry_due_ms = 0;
+        s_client.ready = false;
         s_client.last_stage_error = 0;
+        s_client.ready_this_session = false;
+        s_client.session_failure_counted = false;
+        s_client.auth_failed_this_session = false;
+        /* Fresh link: drop escalations queued for the previous session so a
+         * bond-wipe/restart decided for a dead link cannot fire against this
+         * one before its outcome is known. */
+        s_client.reconnect_pending_actions = 0U;
         s_client.prepare_deadline_ms = now_ms() + ANCS_PREPARE_TIMEOUT_MS;
         s_client.stage_deadline_ms = now_ms() + ANCS_AUTH_TIMEOUT_MS;
+        s_client.session_deadline_ms = now_ms() + ANCS_SESSION_CEILING_MS;
+        s_client.forced_close_grace_ms = 0;
         invalidate_ancs_handles_locked();
         memcpy(s_client.remote_bda,
                parameter->connect.remote_bda,
@@ -2121,6 +2419,17 @@ static void handle_gattc_event(esp_gattc_cb_event_t event,
         s_client.advertising = false;
         s_client.advertising_starting = false;
         taskEXIT_CRITICAL(&s_shared_state_lock);
+        if (reclaimed) {
+            ESP_LOGW(TAG,
+                     "reclaiming stale session stage=%s for fresh connection",
+                     ancs_client_state_name(reclaimed_stage));
+            /* The dead link's GATT virtual channel never got its CLOSE (no
+             * DISCONNECT event ran the teardown); release it so conn_id and
+             * tcb slots cannot leak across reclaims. */
+            if (old_gattc_if != ESP_GATT_IF_NONE) {
+                (void)esp_ble_gattc_close(old_gattc_if, old_conn_id);
+            }
+        }
         transition(ANCS_SIGNAL_CONNECTED);
 
         esp_ble_gatt_creat_conn_params_t connection = {0};
@@ -2381,7 +2690,10 @@ static void handle_gattc_event(esp_gattc_cb_event_t event,
                 /* Fresh subscription point: iOS replays the whole
                  * Notification Center queue right after we subscribe, so
                  * everything dated before this instant is pre-existing.
-                 * Only meaningful once SNTP has set the wall clock. */
+                 * Always anchor on the monotonic clock; the wall-clock
+                 * snapshot is best-effort and replay_cutoff_ms() backdates
+                 * it when SNTP lands late (see S3 fix). */
+                s_client.source_subscribed_monotonic_ms = now_ms();
                 if (provisioning_runtime_time_synced()) {
                     const time_t now_epoch = time(NULL);
                     s_client.wall_clock_valid = now_epoch > 1600000000;
@@ -2396,6 +2708,23 @@ static void handle_gattc_event(esp_gattc_cb_event_t event,
             }
             s_client.ready = ready;
             s_client.stage_deadline_ms = 0;
+            if (ready) {
+                /* A healthy ready link is governed by the supervision
+                 * timeout, not by a software ceiling. */
+                s_client.session_deadline_ms = 0;
+                s_client.forced_close_grace_ms = 0;
+                if (!s_client.ready_this_session) {
+                    s_client.ready_this_session = true;
+                    if (s_client.reconnect.session_failures != 0U) {
+                        ESP_LOGI(TAG,
+                                 "healthy session established; reconnect "
+                                 "ladder reset (was %u failures)",
+                                 (unsigned int)
+                                     s_client.reconnect.session_failures);
+                    }
+                    ancs_reconnect_note_session_ready(&s_client.reconnect);
+                }
+            }
             s_client.discovery_retry_due_ms = 0;
             s_client.last_stage_error = 0;
             taskEXIT_CRITICAL(&s_shared_state_lock);
@@ -2515,11 +2844,32 @@ static void handle_gattc_event(esp_gattc_cb_event_t event,
             break;
         }
         ESP_LOGW(TAG,
-                 "disconnected reason=0x%x",
-                 parameter->disconnect.reason);
+                 "disconnected reason=0x%x conn_id=%u peer=%02x:%02x:%02x:%02x:%02x:%02x",
+                 parameter->disconnect.reason,
+                 parameter->disconnect.conn_id,
+                 parameter->disconnect.remote_bda[0],
+                 parameter->disconnect.remote_bda[1],
+                 parameter->disconnect.remote_bda[2],
+                 parameter->disconnect.remote_bda[3],
+                 parameter->disconnect.remote_bda[4],
+                 parameter->disconnect.remote_bda[5]);
         taskENTER_CRITICAL(&s_shared_state_lock);
         s_client.last_disconnect_reason = parameter->disconnect.reason;
+        const int disconnect_reason = parameter->disconnect.reason;
+        const bool auth_failed = s_client.auth_failed_this_session;
         taskEXIT_CRITICAL(&s_shared_state_lock);
+        /* Feed the reconnect ladder once per session. Encryption-setup
+         * failures (0x08 "connection failed to be established", 0x3d) and
+         * SMP rejections are the asymmetric-bond signature that eventually
+         * justifies deleting our side of the bond; everything else is
+         * treated as transient RF loss and must never touch the bond. */
+        if (auth_failed) {
+            note_session_failure(ANCS_RECONNECT_FAIL_AUTH);
+        } else if (disconnect_reason == 0x08 || disconnect_reason == 0x3D) {
+            note_session_failure(ANCS_RECONNECT_FAIL_ENCRYPTION);
+        } else {
+            note_session_failure(ANCS_RECONNECT_FAIL_TRANSIENT);
+        }
         reset_connection_session();
         /* v0.4.9: KEEP the bond across disconnects. The previous design
          * dropped the raw bond entry after every session so each reconnect
@@ -2586,6 +2936,9 @@ static int sync_existing_ble_bond(void)
         error = bond_list == NULL ? ESP_ERR_NO_MEM
                                  : esp_ble_get_bond_device_list(&list_count, bond_list);
     }
+    bool persisted_owner = false;
+    const bool owner_ok =
+        provision_store_load_owner_bonded(&persisted_owner) == ESP_OK;
     taskENTER_CRITICAL(&s_shared_state_lock);
     s_client.bond_store_error = error;
     if (error == ESP_OK && list_count > 0) {
@@ -2596,10 +2949,13 @@ static int sync_existing_ble_bond(void)
          * match. Re-assert the owner flag instead of clearing it — every
          * periodic bond poll used to wipe has_bond here whenever the raw
          * entry was absent (rotated RPA / power cycle), which silenced
-         * advertising and made the device invisible to the owner. */
-        bool persisted_owner = false;
-        if (provision_store_load_owner_bonded(&persisted_owner) == ESP_OK &&
-            persisted_owner) {
+         * advertising and made the device invisible to the owner.
+         * NOTE: the NVS read above MUST stay OUTSIDE this critical section:
+         * nvs_open_from_partition() takes a pthread lock, and taking one
+         * inside taskENTER_CRITICAL aborts with "lock_acquire_generic"
+         * (abort() at locks.c) — that crash loop is what bricked pairing
+         * after v0.4.9's refactor landed on top of this function. */
+        if (owner_ok && persisted_owner) {
             const uint8_t owner_addr[ESP_BD_ADDR_LEN] = {0};
             ble_enroll_note_bonded(&s_enroll, owner_addr);
             s_client.bonded = true; /* Preserve legacy output; auth is separate. */
@@ -2872,6 +3228,7 @@ esp_err_t ancs_client_init(void)
         error = ESP_ERR_NO_MEM;
         goto init_failed;
     }
+    ancs_reconnect_init(&s_client.reconnect);
     if (xTaskCreate(worker_task,
                     "ancs_worker",
                     CONFIG_ANCS_WORKER_STACK_SIZE,
@@ -3026,12 +3383,27 @@ esp_err_t ancs_client_request_enroll(void)
     }
     if (count == 0 && owner_persisted_bonded()) {
         /* Ownership survives address rotation and power cycles: keep the
-         * advertising-as-owned state and refuse to open a manual pairing
-         * window — only an explicit replacement clears the flag. */
+         * advertising-as-owned state. But when the raw bond store is EMPTY
+         * there is no peer left to reconnect — refusing the enroll window
+         * here used to make "重新配对" a no-op after a factory reset of the
+         * phone side (iOS forgets its bond, device keeps the NVS flag, then
+         * rejects every pairing request). Open the window anyway; MITM +
+         * static PIN still gates who can bond. */
+        const int64_t now = now_ms();
         taskENTER_CRITICAL(&s_shared_state_lock);
-        const uint8_t owner_addr[ESP_BD_ADDR_LEN] = {0};
-        ble_enroll_note_bonded(&s_enroll, owner_addr);
+        if (s_client.connected || s_client.replace_pending) {
+            taskEXIT_CRITICAL(&s_shared_state_lock);
+            return ESP_ERR_INVALID_STATE;
+        }
+        clear_auth_failure_guard_locked();
+        const esp_err_t open_error = ble_enroll_open_window(&s_enroll, now);
         taskEXIT_CRITICAL(&s_shared_state_lock);
+        if (open_error != ESP_OK) {
+            return open_error;
+        }
+        (void)esp_timer_stop(enroll_timer);
+        (void)esp_timer_start_once(
+            enroll_timer, (uint64_t)CONFIG_ANCS_ENROLL_WINDOW_MS * 1000U);
         start_advertising();
         return ESP_OK;
     }
@@ -3161,9 +3533,13 @@ ancs_client_enrollment_status_t ancs_client_get_enrollment_status(void)
     const bool initialized = s_client.initialized;
     taskEXIT_CRITICAL(&s_shared_state_lock);
     const int bond_count = initialized ? current_bond_count() : -1;
+    /* NVS-backed reads MUST happen outside the critical section:
+     * nvs_open_from_partition() takes a pthread lock and abort()s when
+     * called inside taskENTER_CRITICAL (crash loop seen on boot). */
+    const bool persisted_owner_now = owner_persisted_bonded();
     taskENTER_CRITICAL(&s_shared_state_lock);
     const bool status_has_bond =
-        ble_enroll_has_bond(&s_enroll) || owner_persisted_bonded();
+        ble_enroll_has_bond(&s_enroll) || persisted_owner_now;
     taskEXIT_CRITICAL(&s_shared_state_lock);
     taskENTER_CRITICAL(&s_shared_state_lock);
     const ancs_client_enrollment_status_t status = {
