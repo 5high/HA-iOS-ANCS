@@ -577,7 +577,8 @@ static bool owner_persisted_locked(void)
 }
 
 static bool record_auth_failure_locked(int64_t failure_at_ms,
-                                       bool missing_local_bond)
+                                       bool missing_local_bond,
+                                       bool persisted_owner_locked)
 {
     if (s_client.auth_failure_count == 0U ||
         failure_at_ms < s_client.last_auth_failure_ms ||
@@ -594,7 +595,7 @@ static bool record_auth_failure_locked(int64_t failure_at_ms,
      * failures from it are expected re-pairing churn, not an attack. The
      * repair lockout only guards against unknown peers hammering us while
      * we have no owner at all. */
-    if (missing_local_bond && !owner_persisted_locked() &&
+    if (missing_local_bond && !persisted_owner_locked &&
         s_client.auth_failure_count >= AUTH_FAILURE_REPAIR_THRESHOLD) {
         s_client.pairing_repair_required = true;
         ble_enroll_close_window(&s_enroll);
@@ -2015,6 +2016,8 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event,
         } else {
             const int64_t failure_at_ms = now_ms();
             const bool missing_local_bond = current_bond_count() == 0;
+            /* NVS read outside the critical section (see owner_persisted_locked). */
+            const bool persisted_owner = owner_persisted_bonded();
             taskENTER_CRITICAL(&s_shared_state_lock);
             s_client.auth_error =
                 parameter->ble_security.auth_cmpl.fail_reason;
@@ -2023,7 +2026,8 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event,
             const int auth_error = s_client.auth_error;
             const bool repair_required =
                 record_auth_failure_locked(failure_at_ms,
-                                           missing_local_bond);
+                                           missing_local_bond,
+                                           persisted_owner);
             const uint8_t failure_count =
                 s_client.auth_failure_count;
             taskEXIT_CRITICAL(&s_shared_state_lock);
@@ -2069,6 +2073,8 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event,
             break;
         }
         const int remaining = sync_existing_ble_bond();
+        /* NVS read outside the critical section (see owner_persisted_locked). */
+        const bool persisted_owner_after_wipe = owner_persisted_bonded();
         bool should_open = false;
         taskENTER_CRITICAL(&s_shared_state_lock);
         if (remaining == 0) {
@@ -2078,7 +2084,7 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event,
         /* A mid-session stale-bond wipe is not an explicit replacement:
          * with a persisted owner, keep advertising as owned and let the
          * phone re-pair transparently instead of demanding manual pairing. */
-        if (should_open && owner_persisted_locked()) {
+        if (should_open && persisted_owner_after_wipe) {
             should_open = false;
         }
         s_client.replace_pending = false;
@@ -2634,8 +2640,15 @@ static void handle_gattc_event(esp_gattc_cb_event_t event,
             break;
         }
         ESP_LOGW(TAG,
-                 "disconnected reason=0x%x",
-                 parameter->disconnect.reason);
+                 "disconnected reason=0x%x conn_id=%u peer=%02x:%02x:%02x:%02x:%02x:%02x",
+                 parameter->disconnect.reason,
+                 parameter->disconnect.conn_id,
+                 parameter->disconnect.remote_bda[0],
+                 parameter->disconnect.remote_bda[1],
+                 parameter->disconnect.remote_bda[2],
+                 parameter->disconnect.remote_bda[3],
+                 parameter->disconnect.remote_bda[4],
+                 parameter->disconnect.remote_bda[5]);
         taskENTER_CRITICAL(&s_shared_state_lock);
         s_client.last_disconnect_reason = parameter->disconnect.reason;
         taskEXIT_CRITICAL(&s_shared_state_lock);
@@ -2705,6 +2718,9 @@ static int sync_existing_ble_bond(void)
         error = bond_list == NULL ? ESP_ERR_NO_MEM
                                  : esp_ble_get_bond_device_list(&list_count, bond_list);
     }
+    bool persisted_owner = false;
+    const bool owner_ok =
+        provision_store_load_owner_bonded(&persisted_owner) == ESP_OK;
     taskENTER_CRITICAL(&s_shared_state_lock);
     s_client.bond_store_error = error;
     if (error == ESP_OK && list_count > 0) {
@@ -2715,10 +2731,13 @@ static int sync_existing_ble_bond(void)
          * match. Re-assert the owner flag instead of clearing it — every
          * periodic bond poll used to wipe has_bond here whenever the raw
          * entry was absent (rotated RPA / power cycle), which silenced
-         * advertising and made the device invisible to the owner. */
-        bool persisted_owner = false;
-        if (provision_store_load_owner_bonded(&persisted_owner) == ESP_OK &&
-            persisted_owner) {
+         * advertising and made the device invisible to the owner.
+         * NOTE: the NVS read above MUST stay OUTSIDE this critical section:
+         * nvs_open_from_partition() takes a pthread lock, and taking one
+         * inside taskENTER_CRITICAL aborts with "lock_acquire_generic"
+         * (abort() at locks.c) — that crash loop is what bricked pairing
+         * after v0.4.9's refactor landed on top of this function. */
+        if (owner_ok && persisted_owner) {
             const uint8_t owner_addr[ESP_BD_ADDR_LEN] = {0};
             ble_enroll_note_bonded(&s_enroll, owner_addr);
             s_client.bonded = true; /* Preserve legacy output; auth is separate. */
@@ -3295,9 +3314,13 @@ ancs_client_enrollment_status_t ancs_client_get_enrollment_status(void)
     const bool initialized = s_client.initialized;
     taskEXIT_CRITICAL(&s_shared_state_lock);
     const int bond_count = initialized ? current_bond_count() : -1;
+    /* NVS-backed reads MUST happen outside the critical section:
+     * nvs_open_from_partition() takes a pthread lock and abort()s when
+     * called inside taskENTER_CRITICAL (crash loop seen on boot). */
+    const bool persisted_owner_now = owner_persisted_bonded();
     taskENTER_CRITICAL(&s_shared_state_lock);
     const bool status_has_bond =
-        ble_enroll_has_bond(&s_enroll) || owner_persisted_bonded();
+        ble_enroll_has_bond(&s_enroll) || persisted_owner_now;
     taskEXIT_CRITICAL(&s_shared_state_lock);
     taskENTER_CRITICAL(&s_shared_state_lock);
     const ancs_client_enrollment_status_t status = {
